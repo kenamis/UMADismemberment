@@ -34,3 +34,8 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+
+UMADismemberment/Assets/UMA/
+UMADismemberment/Assets/UMA.meta
+UMADismemberment/Assets/Test/
+UMADismemberment/Assets/Test.meta
