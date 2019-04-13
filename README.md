@@ -3,7 +3,7 @@ Examples Scene -> “Assets/Dismemberment/Scene/Example”
 
 The required component is “UMA Dismemberment”
 
-![component](UMADismemberment/images/image01.jpg?raw=true "component")
+![component](https://github.com/kenamis/UMADismemberment/blob/master/images/image01.jpg?raw=true "component")
 
 Use Events – *Turn on or off the Dismembered Event.*
 
