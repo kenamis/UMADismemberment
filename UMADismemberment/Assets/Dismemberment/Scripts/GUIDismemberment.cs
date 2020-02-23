@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UMA.CharacterSystem;
-using UMA.Dismemberment;
+using UMA.Dismemberment2;
 
 public class GUIDismemberment : MonoBehaviour
 {
     public GameObject avatar;
     public HumanBodyBones boneToSlice;
 
-    UmaDismemberment dismember;
+    //UmaDismemberment dismember;
+    UmaDismemberment2 dismember;
 
     Button button;
 
@@ -21,7 +22,7 @@ public class GUIDismemberment : MonoBehaviour
 
         if(avatar != null)
         {
-            dismember = avatar.GetComponent<UmaDismemberment>();
+            dismember = avatar.GetComponent<UmaDismemberment2>();
         }
     }
 
@@ -30,7 +31,7 @@ public class GUIDismemberment : MonoBehaviour
         if (dismember == null)
             Debug.LogError("UmaDismemberment not found!");
 
-        UmaDismemberment.DismemberedInfo info;
+        UmaDismemberment2.DismemberedInfo info;
         dismember.Slice(boneToSlice, out info);
 
         //example hook up copied from callback
