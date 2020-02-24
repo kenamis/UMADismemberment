@@ -15,6 +15,8 @@ namespace UMA.Dismemberment2
         Vector3[] vertices;
         bool[] selection;
 
+		Dictionary<int, List<int>> vertexLocations;
+
         enum UVChannel
         {
             uv,
@@ -25,23 +27,41 @@ namespace UMA.Dismemberment2
         UVChannel uvChannel = UVChannel.uv2;
         HumanBodyBones bone;
 
-        private void OnEnable()
-        {
-            slotDataAsset = serializedObject.FindProperty("slotDataAsset");
-            selectedVerts = serializedObject.FindProperty("selectedVerts");
+		private void OnEnable()
+		{
+			slotDataAsset = serializedObject.FindProperty("slotDataAsset");
+			selectedVerts = serializedObject.FindProperty("selectedVerts");
 
-            SlotDataAsset slotData = (target as UVSlotPainter).slotDataAsset;
-            if(slotData != null)
-            {
-                vertices = slotData.meshData.vertices;
-                selectedVerts.arraySize = vertices.Length;
-                selection = new bool[vertices.Length];
-                for(int i = 0; i < vertices.Length; i++)
-                {
-                    selection[i] = selectedVerts.GetArrayElementAtIndex(i).boolValue;
-                }
-            }
-        }
+			SlotDataAsset slotData = (target as UVSlotPainter).slotDataAsset;
+			if (slotData != null)
+			{
+				vertices = slotData.meshData.vertices;
+				selectedVerts.arraySize = vertices.Length;
+				selection = new bool[vertices.Length];
+				for (int i = 0; i < vertices.Length; i++)
+				{
+					selection[i] = selectedVerts.GetArrayElementAtIndex(i).boolValue;
+				}
+
+				serializedObject.ApplyModifiedProperties();
+
+				vertexLocations = new Dictionary<int, List<int>>();
+				for (int i = 0; i < vertices.Length; i++)
+				{
+					int hash = vertices[i].GetHashCode();
+					List<int> vertexList;
+
+					if (vertexLocations.TryGetValue(hash, out vertexList))
+					{
+						vertexList.Add(i);
+					}
+					else
+					{
+						vertexLocations.Add(hash, new List<int> { i });
+					}
+				}
+			}
+		}
 
         public override void OnInspectorGUI()
         {
@@ -105,8 +125,19 @@ namespace UMA.Dismemberment2
                 {
                     for (int i = 0; i < selectedVerts.arraySize; i++)
                     {
-                        selection[i] = slotData.meshData.uv2[i].y > 0;
-                        selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
+						int triCount = 0;
+						for (int j = 0; j < slotData.meshData.submeshes[0].triangles.Length; j++)
+						{
+							if (slotData.meshData.submeshes[0].triangles[j] == i)
+							{
+								triCount++;
+								if (triCount > 3) break;
+							}
+						}
+						selection[i] = (triCount < 4);
+
+						//selection[i] = slotData.meshData.uv2[i].y > 0;
+						selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
                     }
                 }
             }
@@ -177,7 +208,7 @@ namespace UMA.Dismemberment2
             //temp
             if (uvChannel == UVChannel.uv2)
             {
-                if (slotData.meshData.uv2 == null)
+                if ((slotData.meshData.uv2 == null) || (slotData.meshData.uv2.Length < slotData.meshData.vertexCount))
                 {
                     slotData.meshData.uv2 = new Vector2[slotData.meshData.vertexCount];
                 }
@@ -241,10 +272,22 @@ namespace UMA.Dismemberment2
 
                 if(Handles.Button(point, Quaternion.identity, HandleUtility.GetHandleSize(point) * size, HandleUtility.GetHandleSize(point) * size, Handles.DotHandleCap ))
                 {
-                    selection[i] = !selection[i];
-                    selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i]; //update serialized backer.
-                }
-            }
+					selection[i] = !selection[i];
+                    //selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i]; //update serialized backer.
+
+					int hash = vertices[i].GetHashCode();
+					List<int> vertexList;
+					if (vertexLocations.TryGetValue(hash, out vertexList))
+					{
+						foreach (int vert in vertexList)
+						{
+							selection[vert] = selection[i];
+							selectedVerts.GetArrayElementAtIndex(vert).boolValue = selection[i]; //update serialized backer.
+						}
+					}
+
+				}
+			}
 
             serializedObject.ApplyModifiedProperties();
         }
