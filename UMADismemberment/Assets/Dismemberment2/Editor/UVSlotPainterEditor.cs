@@ -55,10 +55,17 @@ namespace UMA.Dismemberment2
             bone = (HumanBodyBones)EditorGUILayout.EnumPopup("Working Mask", bone);
             int bitMask = (1 << (int)bone);
 
+            EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Set Selected Vertices to Mask"))
             {
                 SetSelectedVerticesMask(slotData, bitMask);
             }
+
+            if(GUILayout.Button("Clear Selected Vertices of Mask"))
+            {
+                ClearSelectedVerticesMask(slotData);
+            }
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
             if(GUILayout.Button("Set Selected Vertices as Edge"))
@@ -104,6 +111,7 @@ namespace UMA.Dismemberment2
                 }
             }
 
+            EditorGUILayout.BeginHorizontal();
             if(GUILayout.Button("Select All"))
             {
                 for (int i = 0; i < selectedVerts.arraySize; i++)
@@ -112,13 +120,56 @@ namespace UMA.Dismemberment2
                     selectedVerts.GetArrayElementAtIndex(i).boolValue = true;
                 }
             }
+            if(GUILayout.Button("Invert Selection"))
+            {
+                for (int i = 0; i < selectedVerts.arraySize; i++)
+                {
+                    selection[i] = !selection[i];
+                    selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
+                }
+            }
+            EditorGUILayout.EndHorizontal();
 
             if(GUILayout.Button("Save to SlotDataAsset"))
             {
 
             }
 
+            //TODO - make this more performant later
+            int selectionCount = 0;
+            for (int i = 0; i < selection.Length; i++)
+            {
+                if(selection[i])
+                {
+                    selectionCount++; 
+                }
+            }
+            EditorGUILayout.LabelField("Selected Vertices: " + selectionCount.ToString());
+
             serializedObject.ApplyModifiedProperties();
+        }
+        
+        private void ClearSelectedVerticesMask(SlotDataAsset slotData)
+        {
+            //temp
+            if (uvChannel == UVChannel.uv2)
+            {
+                if (slotData.meshData.uv2 == null)
+                {
+                    slotData.meshData.uv2 = new Vector2[slotData.meshData.vertexCount];
+                }
+
+                for (int i = 0; i < selection.Length; i++)
+                {
+                    if (selection[i])
+                    {
+                        slotData.meshData.uv2[i].x = 0;
+                    }
+                }
+                EditorUtility.SetDirty(slotData);
+            }
+            AssetDatabase.SaveAssets();
+            Debug.Log("Complete....");
         }
 
         private void SetSelectedVerticesMask(SlotDataAsset slotData, int bitMask)
@@ -138,8 +189,9 @@ namespace UMA.Dismemberment2
                         slotData.meshData.uv2[i].x = bitMask;
                     }
                 }
+                EditorUtility.SetDirty(slotData);
             }
-
+            AssetDatabase.SaveAssets();
             Debug.Log("Complete....");
         }
 
@@ -160,8 +212,10 @@ namespace UMA.Dismemberment2
                         slotData.meshData.uv2[i].y = edge;
                     }
                 }
-            }
 
+                EditorUtility.SetDirty(slotData);
+            }
+            AssetDatabase.SaveAssets();
             Debug.Log("Complete....");
         }
 

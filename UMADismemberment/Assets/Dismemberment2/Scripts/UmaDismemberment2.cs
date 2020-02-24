@@ -155,14 +155,12 @@ namespace UMA.Dismemberment2
             }
             //int[] computedMask = new int[smr.sharedMesh.vertexCount];
             bool[] computedMask = new bool[smr.sharedMesh.vertexCount];
-            bool[] edgeMask = new bool[computedMask.Length];
             for (int i = 0; i < computedMask.Length; i++)
             {
                 //computedMask[i] = (int)masks[i].x;
 
                 //only using X for now, we could part another 32bits in the Y channel.
                 computedMask[i] = (((int)masks[i].x & bitMask) != 0);
-                edgeMask[i] = masks[i].y > 0;
 
                 /*byte[] bytes = BitConverter.GetBytes(masks[i].x);
                 computedMask[i] = BitConverter.ToInt32(bytes, 0);
@@ -172,7 +170,6 @@ namespace UMA.Dismemberment2
                     Debug.Log("Found uv2 data, uv2: " + masks[i].x + " mask: " + computedMask[i] + " bits: " + bv);
                 }*/
             }
-
             Mesh innerMesh = Instantiate<Mesh>(smr.sharedMesh);
 
             //Create new root GameObject and all it's children bones
@@ -207,13 +204,9 @@ namespace UMA.Dismemberment2
 
                     if (vert1 || vert2 || vert3)
                     {
-                        //if (vert1 && !vert2 && !vert3) { edges.Add(tris[i + 1]); edges.Add(tris[i + 2]); Debug.Log("Got here"); }
-                        //if (!vert1 && vert2 && !vert3) { edges.Add(tris[i + 2]); edges.Add(tris[i + 0]); Debug.Log("Got here"); }
-                        //if (!vert1 && !vert2 && vert3) { edges.Add(tris[i + 0]); edges.Add(tris[i + 1]); Debug.Log("Got here"); }
-
-                        //if (edgeMask[tris[i]] && !edgeMask[tris[i + 1]] && !edgeMask[tris[i + 2]]) { edges.Add(tris[i + 1]); edges.Add(tris[i + 2]); }
-                        //if (!edgeMask[tris[i]] && edgeMask[tris[i + 1]] && !edgeMask[tris[i + 2]]) { edges.Add(tris[i + 2]); edges.Add(tris[i + 0]); }
-                        //if (!edgeMask[tris[i]] && !edgeMask[tris[i + 1]] && edgeMask[tris[i + 2]]) { edges.Add(tris[i + 0]); edges.Add(tris[i + 1]); }
+                        if (vert1 && !vert2 && !vert3) { edges.Add(tris[i + 1]); edges.Add(tris[i + 2]); }
+                        if (!vert1 && vert2 && !vert3) { edges.Add(tris[i + 2]); edges.Add(tris[i + 0]); }
+                        if (!vert1 && !vert2 && vert3) { edges.Add(tris[i + 0]); edges.Add(tris[i + 1]); }
 
                         innerTris.Add(tris[i]);
                         innerTris.Add(tris[i + 1]);
@@ -233,11 +226,8 @@ namespace UMA.Dismemberment2
 
             if (edges.Count != 0)
             {
-                //CapMesh(newSmr.sharedMesh, edges, false);
-                //CapMesh(smr.sharedMesh, edges, true);
-
-                CapMesh(newSmr.sharedMesh, edges, true);
-                CapMesh(smr.sharedMesh, edges, false);
+                CapMesh(newSmr.sharedMesh, edges, false);
+                CapMesh(smr.sharedMesh, edges, true);
 
                 //Copy over materials and add the chopFill materials
                 int matCount = smr.sharedMaterials.Length;
