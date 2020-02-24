@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: DismembermentHierarchy
   m_EditorClassIdentifier: 
   humanBodyBoneIndexLimit: 23
-  maskNames: 000000000d00000011000000
-  bitMasks: 0100000000a0020000000200
+  maskNames: 000000000f0000001100000009000000
+  bitMasks: 01000000008002000000020000060000

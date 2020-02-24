@@ -2838,7 +2838,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   avatar: {fileID: 1374058225}
-  boneToSlice: 17
+  boneToSlice: 15
 --- !u!1001 &603185766
 PrefabInstance:
   m_ObjectHideFlags: 0
