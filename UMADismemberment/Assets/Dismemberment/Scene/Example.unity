@@ -2838,7 +2838,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   avatar: {fileID: 1374058225}
-  boneToSlice: 15
+  boneToSlice: 13
 --- !u!1001 &603185766
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2884,11 +2884,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 11453600, guid: 5c80fc4442f8349969abea6c1a0f1faa, type: 3}
       propertyPath: preloadWardrobeRecipes.recipes.Array.size
-      value: 2
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 11453600, guid: 5c80fc4442f8349969abea6c1a0f1faa, type: 3}
       propertyPath: preloadWardrobeRecipes.recipes.Array.data[2]._compatibleRaces.Array.size
-      value: 3
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 11453600, guid: 5c80fc4442f8349969abea6c1a0f1faa, type: 3}
       propertyPath: preloadWardrobeRecipes.recipes.Array.data[3]._compatibleRaces.Array.size
@@ -2905,7 +2905,7 @@ PrefabInstance:
         type: 2}
     - target: {fileID: 11453600, guid: 5c80fc4442f8349969abea6c1a0f1faa, type: 3}
       propertyPath: preloadWardrobeRecipes.recipes.Array.data[2]._recipeName
-      value: MilCut
+      value: MaleRobe Hood
       objectReference: {fileID: 0}
     - target: {fileID: 11453600, guid: 5c80fc4442f8349969abea6c1a0f1faa, type: 3}
       propertyPath: preloadWardrobeRecipes.recipes.Array.data[2]._compatibleRaces.Array.data[0]
@@ -3194,7 +3194,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   avatar: {fileID: 1374058225}
-  boneToSlice: 3
+  boneToSlice: 1
 --- !u!1 &791468563
 GameObject:
   m_ObjectHideFlags: 0
@@ -3732,7 +3732,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1374058225}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 257eeca2ff92b0b458c65827d03a0435, type: 3}
   m_Name: 
@@ -4057,4 +4057,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   avatar: {fileID: 1374058225}
-  boneToSlice: 4
+  boneToSlice: 2
