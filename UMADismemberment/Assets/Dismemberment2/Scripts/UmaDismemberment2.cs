@@ -7,6 +7,11 @@ using UMA.CharacterSystem;
 
 using System.Collections.Specialized;
 
+/// Tutorial used and inspired by http://log.idlecreations.com/2014/04/chopping-up-rag-dolls-in-unity.html?m=1
+/// Written by Kenamis
+/// Many optimizations thanks to Ecurtz
+/// 
+
 namespace UMA.Dismemberment2
 {
     [System.Serializable]
