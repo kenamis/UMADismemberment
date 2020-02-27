@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-using UMA.Dismemberment;
+using UMA.Dismemberment2;
 
 public class ExampleDismemberCallback : MonoBehaviour
 {
@@ -12,11 +12,11 @@ public class ExampleDismemberCallback : MonoBehaviour
     public SkinnedMeshRenderer gibSource;
     public Material gibSourceMaterial;
 
-    UmaDismemberment dismemberment;
+    UmaDismemberment2 dismemberment;
 
     void Start()
     {
-        dismemberment = gameObject.GetComponent<UmaDismemberment>();
+        dismemberment = gameObject.GetComponent<UmaDismemberment2>();
         if (dismemberment != null)
             dismemberment.DismemberedEvent.AddListener(DismemberedCallback);
     }
