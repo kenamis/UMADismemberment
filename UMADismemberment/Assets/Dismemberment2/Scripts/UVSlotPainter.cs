@@ -28,10 +28,10 @@ namespace UMA.Dismemberment2
 			bitMaskColors[2] = new Color( 1f, 0f, 0f, 1f); //RightUpperLeg
 			bitMaskColors[3] = new Color( 0f, 1f, 0f, 1f); //LeftLowerLeg
 			bitMaskColors[4] = new Color( 0.3f, 1f, 0f, 1f); //RightLowerLeg
-			bitMaskColors[5] = Color.blue; //LeftFoot
-			bitMaskColors[6] = Color.blue; //RightFoot
-			bitMaskColors[7] = Color.blue; //Spine
-			bitMaskColors[8] = Color.blue; //Chest
+			bitMaskColors[5] = new Color( 0.5f, 0.4f, 0f, 1f); //LeftFoot
+			bitMaskColors[6] = new Color( 0.5f, 0.7f, 0f, 1f); //RightFoot
+			bitMaskColors[7] = new Color( 0.2f, 0f, 0.2f, 1f); //Spine
+			bitMaskColors[8] = new Color( 0f, 0.8f, 0.2f, 1f); //Chest
 			bitMaskColors[9] = Color.blue; //Neck
 			bitMaskColors[10] = Color.blue; //Head
 			bitMaskColors[11] = Color.blue; //LeftShoulder
