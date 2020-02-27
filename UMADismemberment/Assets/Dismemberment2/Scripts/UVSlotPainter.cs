@@ -11,11 +11,41 @@ using UnityEditor.SceneManagement;
 
 namespace UMA.Dismemberment2
 {
-    public class UVSlotPainter : MonoBehaviour
+	public class UVSlotPainter : MonoBehaviour
     {
 		public SlotDataAsset slotDataAsset;
 
 		public bool[] selectedVerts = new bool[0];
+
+		public Color32 selectionColor = Color.red;
+		public Color32[] bitMaskColors = new Color32[23];
+
+		void Start()
+		{
+			bitMaskColors[0] = Color.blue; //Hips
+			bitMaskColors[1] = new Color( 1f, 0f, 0.3f, 1f); //LeftUpperLeg
+			bitMaskColors[2] = new Color( 1f, 0f, 0f, 1f); //RightUpperLeg
+			bitMaskColors[3] = new Color( 0f, 1f, 0f, 1f); //LeftLowerLeg
+			bitMaskColors[4] = new Color( 0.3f, 1f, 0f, 1f); //RightLowerLeg
+			bitMaskColors[5] = Color.blue; //LeftFoot
+			bitMaskColors[6] = Color.blue; //RightFoot
+			bitMaskColors[7] = Color.blue; //Spine
+			bitMaskColors[8] = Color.blue; //Chest
+			bitMaskColors[9] = Color.blue; //Neck
+			bitMaskColors[10] = Color.blue; //Head
+			bitMaskColors[11] = Color.blue; //LeftShoulder
+			bitMaskColors[12] = Color.blue; //RightShoulder
+			bitMaskColors[13] = Color.blue; //LeftUpperArm
+			bitMaskColors[14] = Color.blue; //RightUpperArm
+			bitMaskColors[15] = new Color(0.5f, 0.4f, 0f, 1f); //LeftLowerArm
+			bitMaskColors[16] = new Color(0.5f, 0.6f, 0f, 1f); //RightLowerArm
+			bitMaskColors[17] = Color.blue; //LeftHand
+			bitMaskColors[18] = Color.blue; //RightHand
+			bitMaskColors[19] = Color.blue; //LeftToes
+			bitMaskColors[20] = Color.blue; //RightToes
+			bitMaskColors[21] = Color.blue; //LeftEye
+			bitMaskColors[22] = Color.blue; //RightEye
+		}
 
 #if UNITY_EDITOR
 		[MenuItem("CONTEXT/SlotDataAsset/Begin UV Painting")]
