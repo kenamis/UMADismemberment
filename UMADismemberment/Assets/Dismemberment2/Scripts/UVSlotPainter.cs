@@ -11,6 +11,7 @@ using UnityEditor.SceneManagement;
 
 namespace UMA.Dismemberment2
 {
+	[ExecuteInEditMode]
 	public class UVSlotPainter : MonoBehaviour
     {
 		public SlotDataAsset slotDataAsset;
