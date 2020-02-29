@@ -56,11 +56,18 @@ namespace UMA.Dismemberment2
         SkinnedMeshRenderer smr; //Will need to deal with multiple renderers eventually
         Animator animator;
 
+        Dictionary<int, SkinnedMeshRenderer> capMeshes = new Dictionary<int, SkinnedMeshRenderer>();
+
         List<int> outerTris;
         List<int> innerTris;
         List<int> edges;
 
         private List<int> tris;
+
+        static List<Vector3> verticesBuffer = new List<Vector3>(20); //reuse list to reduce garbage in cap
+        static List<int> trianglesBuffer = new List<int>(60);
+        static List<Vector2> uvBuffer = new List<Vector2>(20);
+        static List<Vector3> normalBuffer = new List<Vector3>(20);
 
         // Use this for initialization
         void Start()
@@ -223,15 +230,33 @@ namespace UMA.Dismemberment2
                 innerMesh.SetTriangles(innerTris, subMeshIndex);
             }
             
-            GameObject capInner = new GameObject("Inner Cap", typeof(SkinnedMeshRenderer));
-            GameObject capOuter = new GameObject("Outer Cap", typeof(SkinnedMeshRenderer));
+            GameObject capInner = new GameObject("Cap", typeof(SkinnedMeshRenderer));
+            GameObject capOuter = new GameObject("Cap", typeof(SkinnedMeshRenderer));
 
             SkinnedMeshRenderer capInnerSmr = capInner.GetComponent<SkinnedMeshRenderer>();
             SkinnedMeshRenderer capOuterSmr = capOuter.GetComponent<SkinnedMeshRenderer>();
 
+            //Reparent the cap mesh on the SMR to the new SMR
+            List<int> removeList = new List<int>();
+            foreach(KeyValuePair<int,SkinnedMeshRenderer> pair in capMeshes)
+            {
+                if((pair.Key & bitMask) != 0)
+                {
+                    pair.Value.transform.SetParent(newSmr.transform);
+                    pair.Value.bones = newSmr.bones;
+                    removeList.Add(pair.Key);
+                }
+            }
+            foreach(int id in removeList)
+            {
+                capMeshes.Remove(id);
+            }
+
+            capMeshes.Add(bitMask, capOuterSmr);
+
             capInner.transform.SetParent(newSmr.transform);
             capOuter.transform.SetParent(smr.transform);
-
+            
             capInnerSmr.sharedMesh = CapMesh(innerMesh, edges, false);
             capOuterSmr.sharedMesh = CapMesh(smr.sharedMesh, edges, true);
             capInnerSmr.bones = newSmr.bones;
@@ -294,28 +319,32 @@ namespace UMA.Dismemberment2
             return newObj;
         }
 
-        private Mesh CapMesh(Mesh parent, List<int> edges, bool facing = true)
+        static Mesh CapMesh(Mesh parent, List<int> edges, bool facing = true)
         {
             //Profiler.BeginSample("CapMesh");
             if (edges.Count < 2) return null;
 
-            Vector3[] vertices = parent.vertices;
-            int[] triangles = new int[(edges.Count - 1) * 3];
-            Vector2[] uvs = new Vector2[parent.uv.Length];
-            Vector3[] normals = new Vector3[parent.normals.Length];
+            verticesBuffer.Clear();
+            parent.GetVertices(verticesBuffer);
+            trianglesBuffer.Clear();
+            trianglesBuffer.SetActiveSize((edges.Count - 1) * 3);
+            uvBuffer.Clear();
+            parent.GetUVs(0, uvBuffer);
+            normalBuffer.Clear();
+            parent.GetNormals(normalBuffer);
 
             // calculate uv map limits
             Vector2 UVLimits_x = Vector2.zero;
             Vector2 UVLimits_y = Vector2.zero;
-            Quaternion plane = CapOrientation(vertices, edges);
+            Quaternion plane = CapOrientation(verticesBuffer, edges);
             for (int a = 0; a < edges.Count - 1; a += 2)
             {
-                Vector3 v1 = plane * (vertices[edges[a]]);
+                Vector3 v1 = plane * (verticesBuffer[edges[a]]);
                 if ((a == 0) || v1.x < UVLimits_x[0]) UVLimits_x[0] = v1.x;
                 if ((a == 0) || v1.x > UVLimits_x[1]) UVLimits_x[1] = v1.x;
                 if ((a == 0) || v1.y < UVLimits_y[0]) UVLimits_y[0] = v1.y;
                 if ((a == 0) || v1.y > UVLimits_y[1]) UVLimits_y[1] = v1.y;
-                Vector3 v2 = plane * (vertices[edges[a + 1]]);
+                Vector3 v2 = plane * (verticesBuffer[edges[a + 1]]);
                 if ((a == 0) || v2.x < UVLimits_x[0]) UVLimits_x[0] = v2.x;
                 if ((a == 0) || v2.x > UVLimits_x[1]) UVLimits_x[1] = v2.x;
                 if ((a == 0) || v2.y < UVLimits_y[0]) UVLimits_y[0] = v2.y;
@@ -325,30 +354,44 @@ namespace UMA.Dismemberment2
             // generate fan of polys to cap the edges
             for (int a = 0; a < edges.Count - 1; a += 2)
             {
-                triangles[a * 3 + 0] = edges[0];
-                triangles[a * 3 + 1] = facing ? edges[a] : edges[a + 1];
-                triangles[a * 3 + 2] = facing ? edges[a + 1] : edges[a];
+                trianglesBuffer[a * 3 + 0] = edges[0];
+                trianglesBuffer[a * 3 + 1] = facing ? edges[a] : edges[a + 1];
+                trianglesBuffer[a * 3 + 2] = facing ? edges[a + 1] : edges[a];
 
                 for (int i = 0; i < 3; i++)
                 {
-                    Vector3 v = plane  * (vertices[triangles[a * 3 + i]]);
-                    uvs[triangles[a * 3 + i]] = new Vector2((v.x - UVLimits_x[0]) / (UVLimits_x[1] - UVLimits_x[0]), (v.y - UVLimits_y[0]) / (UVLimits_y[1] - UVLimits_y[0]));
-                    normals[triangles[a * 3 + i]] = facing ? plane * Vector3.back : plane * Vector3.forward;
+                    Vector3 v = plane  * (verticesBuffer[trianglesBuffer[a * 3 + i]]);
+                    uvBuffer[trianglesBuffer[a * 3 + i]] = new Vector2((v.x - UVLimits_x[0]) / (UVLimits_x[1] - UVLimits_x[0]), (v.y - UVLimits_y[0]) / (UVLimits_y[1] - UVLimits_y[0]));
+                    normalBuffer[trianglesBuffer[a * 3 + i]] = facing ? plane * Vector3.back : plane * Vector3.forward;
                 }
             }
-            
+
             Mesh m = new Mesh();
-            m.vertices = vertices;
+            m.name = "CapMesh";
+            m.SetVertices(verticesBuffer);
             m.bindposes = parent.bindposes;
             m.boneWeights = parent.boneWeights;
-            m.triangles = triangles;
-            m.uv = uvs;
+            m.SetTriangles(trianglesBuffer, 0);
+            m.SetUVs(0, uvBuffer);
+            m.SetNormals(normalBuffer);
             m.RecalculateNormals();
+
             //Profiler.EndSample();
             return m;
         }
 
-        private Quaternion CapOrientation(Vector3[] verts, List<int> edges)
+        static Quaternion CapOrientation(Vector3[] verts, List<int> edges)
+        {
+            // rough guess as to the orientation of the vertices
+            int third = Mathf.FloorToInt(edges.Count / 3);
+            int twothird = Mathf.FloorToInt(edges.Count * 2 / 3);
+            Vector3 v1 = verts[edges[0]];
+            Vector3 v2 = verts[edges[third]];
+            Vector3 v3 = verts[edges[twothird]];
+            return Quaternion.LookRotation(Vector3.Cross(v1 - v2, v3 - v2));
+        }
+
+        static Quaternion CapOrientation(List<Vector3> verts, List<int> edges)
         {
             // rough guess as to the orientation of the vertices
             int third = Mathf.FloorToInt(edges.Count / 3);
