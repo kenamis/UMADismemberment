@@ -68,6 +68,7 @@ namespace UMA.Dismemberment2
         static List<int> trianglesBuffer = new List<int>(60);
         static List<Vector2> uvBuffer = new List<Vector2>(20);
         static List<Vector3> normalBuffer = new List<Vector3>(20);
+        static List<Transform> boneList = new List<Transform>(20);
 
         // Use this for initialization
         void Start()
@@ -175,6 +176,7 @@ namespace UMA.Dismemberment2
                 //only using X for now, we could part another 32bits in the Y channel.
                 computedMask[i] = (((int)masks[i].x & bitMask) != 0);
             }
+
             Mesh innerMesh = Instantiate<Mesh>(smr.sharedMesh);
 
             //Create new root GameObject and all it's children bones
@@ -229,7 +231,7 @@ namespace UMA.Dismemberment2
                 smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
                 innerMesh.SetTriangles(innerTris, subMeshIndex);
             }
-            
+
             GameObject capInner = new GameObject("Cap", typeof(SkinnedMeshRenderer));
             GameObject capOuter = new GameObject("Cap", typeof(SkinnedMeshRenderer));
 
@@ -265,8 +267,13 @@ namespace UMA.Dismemberment2
             capInnerSmr.material = sliceFillInstance;
             capOuterSmr.materials = new Material[1];
             capOuterSmr.material = sliceFillInstance;
-            
-            hasSplit.Add(bone);
+
+            GetComponentsInChildren<Transform>(boneList);
+            foreach(Transform b in boneList)
+            {
+                hasSplit.Add(b);
+            }
+            boneList.Clear();
 
             //Fill out DismemberedInfo
             info.root = splitRootObj.transform;
