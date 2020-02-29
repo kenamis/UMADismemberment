@@ -196,10 +196,12 @@ namespace UMA.Dismemberment2
             EditorGUILayout.EndHorizontal();
             
             EditorGUILayout.BeginHorizontal();
-            if(GUILayout.Button("Select by Edge"))
+            EditorGUI.BeginDisabledGroup(true);
+            if(GUILayout.Button(new GUIContent("Select By Edge", "Not created!")))
             {
                 SelectByEdge(meshData);
             }
+            EditorGUI.EndDisabledGroup();
             if(GUILayout.Button("Select All Edges"))
             {
                 List<Edge> edges = GetMeshEdges(meshData.vertices, meshData.triangles);
