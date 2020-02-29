@@ -4,8 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UMA.CharacterSystem;
-
 using System.Collections.Specialized;
+
+#if UNITY_EDITOR
+using UnityEngine.Profiling;
+#endif
 
 /// Tutorial used and inspired by http://log.idlecreations.com/2014/04/chopping-up-rag-dolls-in-unity.html?m=1
 /// Written by Kenamis
@@ -219,7 +222,7 @@ namespace UMA.Dismemberment2
                 smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
                 innerMesh.SetTriangles(innerTris, subMeshIndex);
             }
-
+            
             GameObject capInner = new GameObject("Inner Cap", typeof(SkinnedMeshRenderer));
             GameObject capOuter = new GameObject("Outer Cap", typeof(SkinnedMeshRenderer));
 
@@ -237,7 +240,7 @@ namespace UMA.Dismemberment2
             capInnerSmr.material = sliceFillInstance;
             capOuterSmr.materials = new Material[1];
             capOuterSmr.material = sliceFillInstance;
-
+            
             hasSplit.Add(bone);
 
             //Fill out DismemberedInfo
@@ -293,8 +296,10 @@ namespace UMA.Dismemberment2
 
         private Mesh CapMesh(Mesh parent, List<int> edges, bool facing = true)
         {
+            //Profiler.BeginSample("CapMesh");
             if (edges.Count < 2) return null;
 
+            Vector3[] vertices = parent.vertices;
             int[] triangles = new int[(edges.Count - 1) * 3];
             Vector2[] uvs = new Vector2[parent.uv.Length];
             Vector3[] normals = new Vector3[parent.normals.Length];
@@ -302,15 +307,15 @@ namespace UMA.Dismemberment2
             // calculate uv map limits
             Vector2 UVLimits_x = Vector2.zero;
             Vector2 UVLimits_y = Vector2.zero;
-            Quaternion plane = CapOrientation(parent.vertices, edges);
+            Quaternion plane = CapOrientation(vertices, edges);
             for (int a = 0; a < edges.Count - 1; a += 2)
             {
-                Vector3 v1 = plane * (parent.vertices[edges[a]]);
+                Vector3 v1 = plane * (vertices[edges[a]]);
                 if ((a == 0) || v1.x < UVLimits_x[0]) UVLimits_x[0] = v1.x;
                 if ((a == 0) || v1.x > UVLimits_x[1]) UVLimits_x[1] = v1.x;
                 if ((a == 0) || v1.y < UVLimits_y[0]) UVLimits_y[0] = v1.y;
                 if ((a == 0) || v1.y > UVLimits_y[1]) UVLimits_y[1] = v1.y;
-                Vector3 v2 = plane * (parent.vertices[edges[a + 1]]);
+                Vector3 v2 = plane * (vertices[edges[a + 1]]);
                 if ((a == 0) || v2.x < UVLimits_x[0]) UVLimits_x[0] = v2.x;
                 if ((a == 0) || v2.x > UVLimits_x[1]) UVLimits_x[1] = v2.x;
                 if ((a == 0) || v2.y < UVLimits_y[0]) UVLimits_y[0] = v2.y;
@@ -326,19 +331,20 @@ namespace UMA.Dismemberment2
 
                 for (int i = 0; i < 3; i++)
                 {
-                    Vector3 v = plane  * (parent.vertices[triangles[a * 3 + i]]);
+                    Vector3 v = plane  * (vertices[triangles[a * 3 + i]]);
                     uvs[triangles[a * 3 + i]] = new Vector2((v.x - UVLimits_x[0]) / (UVLimits_x[1] - UVLimits_x[0]), (v.y - UVLimits_y[0]) / (UVLimits_y[1] - UVLimits_y[0]));
                     normals[triangles[a * 3 + i]] = facing ? plane * Vector3.back : plane * Vector3.forward;
                 }
             }
             
             Mesh m = new Mesh();
-            m.vertices = parent.vertices;
+            m.vertices = vertices;
             m.bindposes = parent.bindposes;
             m.boneWeights = parent.boneWeights;
             m.triangles = triangles;
             m.uv = uvs;
             m.RecalculateNormals();
+            //Profiler.EndSample();
             return m;
         }
 
