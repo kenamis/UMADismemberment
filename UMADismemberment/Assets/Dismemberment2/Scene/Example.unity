@@ -3887,30 +3887,6 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 603185766}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1374058226
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1374058225}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 72c61065c290a1d4cac4cc1c26739a17, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  useEvents: 1
-  sliceFill: {fileID: 2100000, guid: 0cbd20782733f6540925991b3825db2e, type: 2}
-  globalThreshold: 0.814
-  useSliceable: 0
-  sliceableHumanBones:
-  - humanBone: 9
-    threshold: 0.842
-  - humanBone: 13
-    threshold: 0.919
-  DismemberedEvent:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!114 &1374058227
 MonoBehaviour:
   m_ObjectHideFlags: 0
