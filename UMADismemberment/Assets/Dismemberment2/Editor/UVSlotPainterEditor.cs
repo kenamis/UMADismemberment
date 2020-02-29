@@ -168,16 +168,9 @@ namespace UMA.Dismemberment2
             EditorGUILayout.BeginHorizontal();
             if(GUILayout.Button("Select by Mask"))
             {
-                if(slotData.meshData.uv2 != null)
-                {
-                    int selectBitMask = (1 << (int)selectBoneMask);
-                    for (int i = 0; i < selectedVerts.arraySize; i++)
-                    {
-                        Vector2[] uvs = GetUVChannel(slotData, selectChannel);
-                        selection[i] = ((int)uvs[i].x & selectBitMask) != 0;
-                        selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
-                    }
-                }
+                int selectBitMask = (1 << (int)selectBoneMask);
+                SelectByMask(slotData, selectBitMask, selectChannel);
+
             }
             selectChannel = (UVChannel)EditorGUILayout.EnumPopup(selectChannel, GUILayout.MaxWidth(80));
             selectBoneMask = (HumanBodyBones)EditorGUILayout.EnumPopup(selectBoneMask, GUILayout.MaxWidth(80));
@@ -202,20 +195,21 @@ namespace UMA.Dismemberment2
             }
             if(GUILayout.Button("Select All Edges"))
             {
-                Debug.Log("Selecting All Edges...");
-                Edge[] edges = GetMeshEdges(slotData.meshData.vertices, slotData.meshData.submeshes[slotData.subMeshIndex].triangles);
-                Debug.Log(edges.Length + " edges found.");
-                ClearSelection();
-                for(int i = 0; i < edges.Length; i++)
+                List<Edge> edges = GetMeshEdges(slotData.meshData.vertices, slotData.meshData.submeshes[slotData.subMeshIndex].triangles);
+                if (edges != null)
                 {
-                    int index1 = edges[i].index1;
-                    int index2 = edges[i].index2;
+                    ClearSelection();
+                    for (int i = 0; i < edges.Count; i++)
+                    {
+                        int index1 = edges[i].index1;
+                        int index2 = edges[i].index2;
 
-                    selection[index1] = true;
-                    selectedVerts.GetArrayElementAtIndex(index1).boolValue = true;
+                        selection[index1] = true;
+                        selectedVerts.GetArrayElementAtIndex(index1).boolValue = true;
 
-                    selection[index2] = true;
-                    selectedVerts.GetArrayElementAtIndex(index2).boolValue = true;
+                        selection[index2] = true;
+                        selectedVerts.GetArrayElementAtIndex(index2).boolValue = true;
+                    }
                 }
             }
             EditorGUILayout.EndHorizontal();
@@ -227,11 +221,7 @@ namespace UMA.Dismemberment2
             }
             if(GUILayout.Button("Invert Selection"))
             {
-                for (int i = 0; i < selectedVerts.arraySize; i++)
-                {
-                    selection[i] = !selection[i];
-                    selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
-                }
+                InvertSelection();
             }
             EditorGUILayout.EndHorizontal();
 
@@ -247,21 +237,9 @@ namespace UMA.Dismemberment2
 
             }
 
-            //TODO - make this more performant later
-            int selectionCount = 0;
-            if (selection != null)
-            {
-                for (int i = 0; i < selection.Length; i++)
-                {
-                    if (selection[i])
-                    {
-                        selectionCount++;
-                    }
-                }
-                EditorGUILayout.LabelField("Selected Vertices: " + selectionCount.ToString());
-            }
+            EditorGUILayout.LabelField("Selected Vertices: " + GetSelectionCount().ToString());
 
-            if(slotData.meshData.uv != null && slotData.meshData.uv.Length > 0)
+            if (slotData.meshData.uv != null && slotData.meshData.uv.Length > 0)
             {
                 EditorGUILayout.LabelField("UV  Channel exists");
             }
@@ -297,6 +275,23 @@ namespace UMA.Dismemberment2
             serializedObject.ApplyModifiedProperties();
         }
 
+        private int GetSelectionCount()
+        {
+            //TODO - make this more performant later
+            int selectionCount = 0;
+            if (selection != null)
+            {
+                for (int i = 0; i < selection.Length; i++)
+                {
+                    if (selection[i])
+                    {
+                        selectionCount++;
+                    }
+                }
+            }
+            return selectionCount;
+        }
+
         private void ClearSelection()
         {
             for (int i = 0; i < selectedVerts.arraySize; i++)
@@ -315,6 +310,15 @@ namespace UMA.Dismemberment2
             }
         }
 
+        private void InvertSelection()
+        {
+            for (int i = 0; i < selectedVerts.arraySize; i++)
+            {
+                selection[i] = !selection[i];
+                selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
+            }
+        }
+
         private void SelectByPlane(bool positive, Plane plane)
         {
             for (int i = 0; i < vertices.Length; i++)
@@ -329,7 +333,7 @@ namespace UMA.Dismemberment2
                     }
                     else
                     {
-                        if (vertices[i].z < 0)
+                        if (vertices[i].z <= 0)
                             select = true;
                     }
                 }
@@ -342,7 +346,7 @@ namespace UMA.Dismemberment2
                     }
                     else
                     {
-                        if (vertices[i].y < 0)
+                        if (vertices[i].y <= 0)
                             select = true;
                     }
                 }
@@ -356,7 +360,7 @@ namespace UMA.Dismemberment2
                     }
                     else
                     {
-                        if (vertices[i].x < 0)
+                        if (vertices[i].x <= 0)
                             select = true;
                     }
                 }
@@ -376,7 +380,7 @@ namespace UMA.Dismemberment2
             return -1;
         }
 
-        private Edge[] GetMeshEdges(Vector3[] vertices, int[] triangles)
+        private List<Edge> GetMeshEdges(Vector3[] vertices, int[] triangles)
         {
             Dictionary<Edge, int> edges = new Dictionary<Edge, int>();
 
@@ -399,8 +403,7 @@ namespace UMA.Dismemberment2
                 Edge edge2 = new Edge(v1, triangles[i], v3, triangles[i + 2]);
                 if (edges.ContainsKey(edge2))
                 {
-                    int count = edges[edge2];
-                    edges[edge2] = count + 1;
+                    edges[edge2]++;
                 }
                 else
                 {
@@ -410,8 +413,7 @@ namespace UMA.Dismemberment2
                 Edge edge3 = new Edge(v2, triangles[i + 1], v3, triangles[i + 2]);
                 if (edges.ContainsKey(edge3))
                 {
-                    int count = edges[edge3];
-                    edges[edge3] = count + 1;
+                    edges[edge3]++;
                 }
                 else
                 {
@@ -419,50 +421,25 @@ namespace UMA.Dismemberment2
                 }
             }
 
-            Edge[] keys = new Edge[edges.Keys.Count];
-            edges.Keys.CopyTo(keys, 0);
-            for(int i = 0; i < edges.Keys.Count; i++)
+            List<Edge> borders = new List<Edge>();
+
+            foreach(KeyValuePair<Edge,int> pair in edges)
             {
-                if(edges[keys[i]] >= 1)
+                if(pair.Value <= 1 && (vertexLocations[pair.Key.v1.GetHashCode()].Count <= 1 || vertexLocations[pair.Key.v2.GetHashCode()].Count <= 1))
                 {
-                    edges.Remove(keys[i]);
+                    borders.Add(pair.Key);
                 }
             }
 
-            Edge[] edgeArray = new Edge[edges.Keys.Count];
-            edges.Keys.CopyTo(edgeArray, 0);
-            
-            return edgeArray;
+            return borders;
         }
 
         private void SelectByEdge(SlotDataAsset slotData)
         {
-            if (slotData.meshData.uv2 != null)
+            int index = FindFirstSelectedIndex();
+            if(index >= 0)
             {
-                /*for (int i = 0; i < selectedVerts.arraySize; i++)
-                {
-                    int triCount = 0;
-                    for (int j = 0; j < slotData.meshData.submeshes[0].triangles.Length; j++)
-                    {
-                        if (slotData.meshData.submeshes[0].triangles[j] == i)
-                        {
-                            triCount++;
-                            if (triCount > 3) break;
-                        }
-                    }
-                    selection[i] = (triCount < 4);
 
-                    //selection[i] = slotData.meshData.uv2[i].y > 0;
-                    selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
-                }*/
-
-                
-
-                int index = FindFirstSelectedIndex();
-                if(index >= 0)
-                {
-
-                }
             }
         }
 
@@ -566,6 +543,8 @@ namespace UMA.Dismemberment2
         private void ClearSelectedVerticesMask(SlotDataAsset slotData, UVChannel channel)
         {
             Vector2[] uvs = GetUVChannel(slotData, channel);
+            if (uvs == null)
+                return;
 
             for (int i = 0; i < selection.Length; i++)
             {
@@ -584,6 +563,9 @@ namespace UMA.Dismemberment2
         {
             Vector2[] uvs = GetUVChannel(slotData, channel);
 
+            if (uvs == null)
+                return;
+
             for (int i = 0; i < selection.Length; i++)
             {
                 if (selection[i])
@@ -595,6 +577,19 @@ namespace UMA.Dismemberment2
             
             AssetDatabase.SaveAssets();
             Debug.Log("Complete....");
+        }
+
+        private void SelectByMask(SlotDataAsset slotData, int bitMask, UVChannel channel)
+        {
+            Vector2[] uvs = GetUVChannel(slotData, channel);
+            if (uvs == null)
+                return;
+
+            for (int i = 0; i < selectedVerts.arraySize; i++)
+            {
+                selection[i] = ((int)uvs[i].x & bitMask) != 0;
+                selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
+            }
         }
 
         void OnSceneGUI()
