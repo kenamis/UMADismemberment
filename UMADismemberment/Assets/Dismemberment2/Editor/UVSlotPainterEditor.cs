@@ -43,6 +43,7 @@ namespace UMA.Dismemberment2
             }
         }
 
+        Mesh meshData;
         SerializedProperty slotDataAsset;
         SerializedProperty selectedVerts;
         SerializedProperty selectionColor;
@@ -67,6 +68,7 @@ namespace UMA.Dismemberment2
         UVChannel setChannel = UVChannel.uv2;
         UVChannel clearChannel = UVChannel.uv2;
         UVChannel selectChannel = UVChannel.uv2;
+        UVChannel saveChannel = UVChannel.uv2;
         HumanBodyBones setBoneMask;
         HumanBodyBones selectBoneMask;
 
@@ -85,41 +87,46 @@ namespace UMA.Dismemberment2
             selectionColor = serializedObject.FindProperty("selectionColor");
             bitMaskColors = serializedObject.FindProperty("bitMaskColors");
 
-            SlotDataAsset slotData = (target as UVSlotPainter).slotDataAsset;
-			if (slotData != null)
-			{
-				vertices = slotData.meshData.vertices;
-				selectedVerts.arraySize = vertices.Length;
-				selection = new bool[vertices.Length];
-				for (int i = 0; i < vertices.Length; i++)
-				{
-					selection[i] = selectedVerts.GetArrayElementAtIndex(i).boolValue;
-				}
+            MeshFilter meshFilter = (target as UVSlotPainter).GetComponent<MeshFilter>();
+            if (meshFilter == null)
+            {
+                Debug.LogError("No mesh filter found for this panter object!");
 
-				serializedObject.ApplyModifiedProperties();
+            }
+            else
+            {
+                meshData = meshFilter.sharedMesh;
 
-				vertexLocations = new Dictionary<int, List<int>>();
-				for (int i = 0; i < vertices.Length; i++)
-				{
-					int hash = vertices[i].GetHashCode();
-					List<int> vertexList;
+                vertices = meshData.vertices;
+                selectedVerts.arraySize = vertices.Length;
+                selection = new bool[vertices.Length];
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    selection[i] = selectedVerts.GetArrayElementAtIndex(i).boolValue;
+                }
 
-					if (vertexLocations.TryGetValue(hash, out vertexList))
-					{
-						vertexList.Add(i);
-					}
-					else
-					{
-						vertexLocations.Add(hash, new List<int> { i });
-					}
-				}
-			}
+                serializedObject.ApplyModifiedProperties();
+
+                vertexLocations = new Dictionary<int, List<int>>();
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    int hash = vertices[i].GetHashCode();
+                    List<int> vertexList;
+
+                    if (vertexLocations.TryGetValue(hash, out vertexList))
+                    {
+                        vertexList.Add(i);
+                    }
+                    else
+                    {
+                        vertexLocations.Add(hash, new List<int> { i });
+                    }
+                }
+            }
 		}
 
         public override void OnInspectorGUI()
         {
-            SlotDataAsset slotData = (target as UVSlotPainter).slotDataAsset;
-            //base.OnInspectorGUI();
             serializedObject.Update();
 
             GUILayout.Space(20);
@@ -147,7 +154,7 @@ namespace UMA.Dismemberment2
             if (GUILayout.Button("Set Selected Vertices to Mask"))
             {
                 int setBitMask = (1 << (int)setBoneMask);
-                SetSelectedVerticesMask(slotData, setBitMask, setChannel);
+                SetSelectedVerticesMask(meshData, setBitMask, setChannel);
             }
             setChannel = (UVChannel)EditorGUILayout.EnumPopup(setChannel, GUILayout.MaxWidth(80));
             setBoneMask = (HumanBodyBones)EditorGUILayout.EnumPopup(setBoneMask, GUILayout.MaxWidth(80));
@@ -156,7 +163,7 @@ namespace UMA.Dismemberment2
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Clear Selected Vertices of Mask"))
             {
-                ClearSelectedVerticesMask(slotData, clearChannel);
+                ClearSelectedVerticesMask(meshData, clearChannel);
             }
             clearChannel = (UVChannel)EditorGUILayout.EnumPopup(clearChannel, GUILayout.MaxWidth(80));
             EditorGUILayout.EndHorizontal();
@@ -169,7 +176,7 @@ namespace UMA.Dismemberment2
             if(GUILayout.Button("Select by Mask"))
             {
                 int selectBitMask = (1 << (int)selectBoneMask);
-                SelectByMask(slotData, selectBitMask, selectChannel);
+                SelectByMask(meshData, selectBitMask, selectChannel);
 
             }
             selectChannel = (UVChannel)EditorGUILayout.EnumPopup(selectChannel, GUILayout.MaxWidth(80));
@@ -191,11 +198,11 @@ namespace UMA.Dismemberment2
             EditorGUILayout.BeginHorizontal();
             if(GUILayout.Button("Select by Edge"))
             {
-                SelectByEdge(slotData);
+                SelectByEdge(meshData);
             }
             if(GUILayout.Button("Select All Edges"))
             {
-                List<Edge> edges = GetMeshEdges(slotData.meshData.vertices, slotData.meshData.submeshes[slotData.subMeshIndex].triangles);
+                List<Edge> edges = GetMeshEdges(meshData.vertices, meshData.triangles);
                 if (edges != null)
                 {
                     ClearSelection();
@@ -232,14 +239,17 @@ namespace UMA.Dismemberment2
             EditorGUILayout.EndVertical();
 
             GUILayout.Space(20);
+            EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Save to SlotDataAsset", GUILayout.Height(30)))
             {
-
+                SaveToSlotDataAsset(saveChannel);
             }
+            saveChannel = (UVChannel)EditorGUILayout.EnumPopup(saveChannel, GUILayout.MaxWidth(80));
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.LabelField("Selected Vertices: " + GetSelectionCount().ToString());
 
-            if (slotData.meshData.uv != null && slotData.meshData.uv.Length > 0)
+            if (meshData.uv != null && meshData.uv.Length > 0)
             {
                 EditorGUILayout.LabelField("UV  Channel exists");
             }
@@ -247,7 +257,7 @@ namespace UMA.Dismemberment2
             {
                 EditorGUILayout.LabelField("UV  Channel does not exist");
             }
-            if (slotData.meshData.uv2 != null && slotData.meshData.uv2.Length > 0)
+            if (meshData.uv2 != null && meshData.uv2.Length > 0)
             {
                 EditorGUILayout.LabelField("UV2 Channel exists");
             }
@@ -255,7 +265,7 @@ namespace UMA.Dismemberment2
             {
                 EditorGUILayout.LabelField("UV2 Channel does not exist");
             }
-            if (slotData.meshData.uv3 != null && slotData.meshData.uv3.Length > 0)
+            if (meshData.uv3 != null && meshData.uv3.Length > 0)
             {
                 EditorGUILayout.LabelField("UV3 Channel exists");
             }
@@ -263,7 +273,7 @@ namespace UMA.Dismemberment2
             {
                 EditorGUILayout.LabelField("UV3 Channel does not exist");
             }
-            if (slotData.meshData.uv4 != null && slotData.meshData.uv4.Length > 0)
+            if (meshData.uv4 != null && meshData.uv4.Length > 0)
             {
                 EditorGUILayout.LabelField("UV4 Channel exists");
             }
@@ -273,6 +283,40 @@ namespace UMA.Dismemberment2
             }
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private void SaveToSlotDataAsset(UVChannel channel)
+        {
+            if(slotDataAsset.objectReferenceValue == null)
+            {
+                Debug.LogError("No slot data asset found!");
+                return;
+            }
+            
+            if(EditorUtility.DisplayDialog("Save", "This will save your changes to " + slotDataAsset.objectReferenceValue.name + " on channel " + channel + " and overwrite any existing data. Are you sure?", "OK", "Cancel"))
+            {
+                SlotDataAsset slotData = slotDataAsset.objectReferenceValue as SlotDataAsset;
+                switch(channel)
+                {
+                    case UVChannel.uv:
+                        slotData.meshData.uv = meshData.uv;
+                        break;
+                    case UVChannel.uv2:
+                        slotData.meshData.uv2 = meshData.uv2;
+                        break;
+                    case UVChannel.uv3:
+                        slotData.meshData.uv3 = meshData.uv3;
+                        break;
+                    case UVChannel.uv4:
+                        slotData.meshData.uv4 = meshData.uv4;
+                        break;
+                    default:
+                        slotData.meshData.uv2 = meshData.uv2;
+                        break;
+                }
+                EditorUtility.SetDirty(slotData);
+                AssetDatabase.SaveAssets();
+            }
         }
 
         private int GetSelectionCount()
@@ -292,6 +336,7 @@ namespace UMA.Dismemberment2
             return selectionCount;
         }
 
+        #region SelectionFunctions
         private void ClearSelection()
         {
             for (int i = 0; i < selectedVerts.arraySize; i++)
@@ -434,7 +479,7 @@ namespace UMA.Dismemberment2
             return borders;
         }
 
-        private void SelectByEdge(SlotDataAsset slotData)
+        private void SelectByEdge(Mesh meshData)
         {
             int index = FindFirstSelectedIndex();
             if(index >= 0)
@@ -443,16 +488,19 @@ namespace UMA.Dismemberment2
             }
         }
 
-        private Vector2[] GetUVChannel(SlotDataAsset slotData, UVChannel channel)
+        private Vector2[] GetUVChannel(Mesh meshData, UVChannel channel)
         {
+            if (meshData == null)
+                return null;
+
             switch (channel)
             {
                 case UVChannel.uv:
-                    if (slotData.meshData.uv == null)
+                    if (meshData.uv == null)
                     {
                         if (EditorUtility.DisplayDialog("No UV Channel", "UV Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            slotData.meshData.uv = new Vector2[slotData.meshData.vertices.Length];
+                            meshData.uv = new Vector2[meshData.vertices.Length];
                         }
                         else
                         {
@@ -460,89 +508,114 @@ namespace UMA.Dismemberment2
                         }
                     }
 
-                    if (slotData.meshData.uv.Length < slotData.meshData.vertices.Length)
+                    if (meshData.uv.Length < meshData.vertices.Length)
                     {
-                        Vector2[] uvs = new Vector2[slotData.meshData.vertices.Length];
-                        slotData.meshData.uv.CopyTo(uvs, 0);
-                        slotData.meshData.uv = uvs;
+                        Vector2[] uvs = new Vector2[meshData.vertices.Length];
+                        meshData.uv.CopyTo(uvs, 0);
+                        meshData.uv = uvs;
                     }
-                    return slotData.meshData.uv;
+                    return meshData.uv;
                 case UVChannel.uv2:
-                    if (slotData.meshData.uv2 == null)
+                    if (meshData.uv2 == null)
                     {
                         if (EditorUtility.DisplayDialog("No UV2 Channel", "UV2 Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            slotData.meshData.uv2 = new Vector2[slotData.meshData.vertices.Length];
+                            meshData.uv2 = new Vector2[meshData.vertices.Length];
                         }
                         else
                         {
                             return null;
                         }
                     }
-                    if (slotData.meshData.uv2.Length < slotData.meshData.vertices.Length)
+                    if (meshData.uv2.Length < meshData.vertices.Length)
                     {
-                        Vector2[] uvs = new Vector2[slotData.meshData.vertices.Length];
-                        slotData.meshData.uv2.CopyTo(uvs, 0);
-                        slotData.meshData.uv2 = uvs;
+                        Vector2[] uvs = new Vector2[meshData.vertices.Length];
+                        meshData.uv2.CopyTo(uvs, 0);
+                        meshData.uv2 = uvs;
                     }
-                    return slotData.meshData.uv2;
+                    return meshData.uv2;
                 case UVChannel.uv3:
-                    if (slotData.meshData.uv3 == null)
+                    if (meshData.uv3 == null)
                     {
                         if (EditorUtility.DisplayDialog("No UV3 Channel", "UV3 Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            slotData.meshData.uv3 = new Vector2[slotData.meshData.vertices.Length];
+                            meshData.uv3 = new Vector2[meshData.vertices.Length];
                         }
                         else
                         {
                             return null;
                         }
                     }
-                    if (slotData.meshData.uv3.Length < slotData.meshData.vertices.Length)
+                    if (meshData.uv3.Length < meshData.vertices.Length)
                     {
-                        Vector2[] uvs = new Vector2[slotData.meshData.vertices.Length];
-                        slotData.meshData.uv3.CopyTo(uvs, 0);
-                        slotData.meshData.uv3 = uvs;
+                        Vector2[] uvs = new Vector2[meshData.vertices.Length];
+                        meshData.uv3.CopyTo(uvs, 0);
+                        meshData.uv3 = uvs;
                     }
-                    return slotData.meshData.uv3;
+                    return meshData.uv3;
                 case UVChannel.uv4:
-                    if (slotData.meshData.uv4 == null)
+                    if (meshData.uv4 == null)
                     {
                         if (EditorUtility.DisplayDialog("No UV4 Channel", "UV4 Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            slotData.meshData.uv4 = new Vector2[slotData.meshData.vertices.Length];
+                            meshData.uv4 = new Vector2[meshData.vertices.Length];
                         }
                         else
                         {
                             return null;
                         }
                     }
-                    if (slotData.meshData.uv4.Length < slotData.meshData.vertices.Length)
+                    if (meshData.uv4.Length < meshData.vertices.Length)
                     {
-                        Vector2[] uvs = new Vector2[slotData.meshData.vertices.Length];
-                        slotData.meshData.uv4.CopyTo(uvs, 0);
-                        slotData.meshData.uv4 = uvs;
+                        Vector2[] uvs = new Vector2[meshData.vertices.Length];
+                        meshData.uv4.CopyTo(uvs, 0);
+                        meshData.uv4 = uvs;
                     }
-                    return slotData.meshData.uv4;
+                    return meshData.uv4;
                 default:
-                    if (slotData.meshData.uv2 == null)
+                    if (meshData.uv2 == null)
                     {
                         if (EditorUtility.DisplayDialog("No UV2 Channel", "UV2 Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            slotData.meshData.uv2 = new Vector2[slotData.meshData.vertices.Length];
+                            meshData.uv2 = new Vector2[meshData.vertices.Length];
                         }
                         else
                         {
                             return null;
                         }
                     }
-                    return slotData.meshData.uv2;
+                    return meshData.uv2;
+            }
+        }
+
+        private void SetUVChannel(Mesh meshData, UVChannel channel, Vector2[] uvs)
+        {
+            if (meshData == null)
+                return;
+
+            switch (channel)
+            {
+                case UVChannel.uv:
+                    meshData.uv = uvs;
+                    break;
+                case UVChannel.uv2:
+                    meshData.uv2 = uvs;
+                    break;
+                case UVChannel.uv3:
+                    meshData.uv3 = uvs;
+                    break;
+                case UVChannel.uv4:
+                    meshData.uv4 = uvs;
+                    break;
+                default:
+                    meshData.uv2 = uvs;
+                    break;
             }
         }
         
-        private void ClearSelectedVerticesMask(SlotDataAsset slotData, UVChannel channel)
+        private void ClearSelectedVerticesMask(Mesh meshData, UVChannel channel)
         {
-            Vector2[] uvs = GetUVChannel(slotData, channel);
+            Vector2[] uvs = GetUVChannel(meshData, channel);
             if (uvs == null)
                 return;
 
@@ -553,18 +626,20 @@ namespace UMA.Dismemberment2
                     uvs[i].x = 0;
                 }
             }
-            EditorUtility.SetDirty(slotData);
 
+            SetUVChannel(meshData, channel, uvs);
             AssetDatabase.SaveAssets();
-            Debug.Log("Complete....");
         }
 
-        private void SetSelectedVerticesMask(SlotDataAsset slotData, int bitMask, UVChannel channel)
+        private void SetSelectedVerticesMask(Mesh meshData, int bitMask, UVChannel channel)
         {
-            Vector2[] uvs = GetUVChannel(slotData, channel);
+            Vector2[] uvs = GetUVChannel(meshData, channel);
 
             if (uvs == null)
+            {
+                Debug.LogError("UVs are null!");
                 return;
+            }
 
             for (int i = 0; i < selection.Length; i++)
             {
@@ -573,15 +648,14 @@ namespace UMA.Dismemberment2
                     uvs[i].x = bitMask;
                 }
             }
-            EditorUtility.SetDirty(slotData);
-            
+
+            SetUVChannel(meshData, channel, uvs);
             AssetDatabase.SaveAssets();
-            Debug.Log("Complete....");
         }
 
-        private void SelectByMask(SlotDataAsset slotData, int bitMask, UVChannel channel)
+        private void SelectByMask(Mesh meshData, int bitMask, UVChannel channel)
         {
-            Vector2[] uvs = GetUVChannel(slotData, channel);
+            Vector2[] uvs = GetUVChannel(meshData, channel);
             if (uvs == null)
                 return;
 
@@ -591,9 +665,13 @@ namespace UMA.Dismemberment2
                 selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i];
             }
         }
+        #endregion
 
         void OnSceneGUI()
         {
+            UVSlotPainter painter = (target as UVSlotPainter);
+            Selection.activeGameObject = painter.gameObject; //so we prevent deselecting the object when clicking in the scene view.
+
             if (vertices == null)
             {
                 Debug.LogError("No vertices found!");
@@ -602,12 +680,8 @@ namespace UMA.Dismemberment2
 
             serializedObject.Update();
 
-            UVSlotPainter painter = (target as UVSlotPainter);
-            SlotDataAsset slotData = painter.slotDataAsset;
-
             Transform mat = painter.transform;
-            Vector2[] uvs = GetUVChannel(slotData, handleChannel);
-
+            Vector2[] uvs = GetUVChannel(meshData, handleChannel);
 
             for (int i = 0; i < vertices.Length; i++)
             {
