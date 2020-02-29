@@ -23,7 +23,7 @@ namespace UMA.Dismemberment2
 
 		void Start()
 		{
-			bitMaskColors[0] = Color.blue; //Hips
+			bitMaskColors[0] = new Color( 0f, 0f, 1f, 1f); //Hips
 			bitMaskColors[1] = new Color( 1f, 0f, 0.3f, 1f); //LeftUpperLeg
 			bitMaskColors[2] = new Color( 1f, 0f, 0f, 1f); //RightUpperLeg
 			bitMaskColors[3] = new Color( 0f, 1f, 0f, 1f); //LeftLowerLeg
@@ -32,20 +32,20 @@ namespace UMA.Dismemberment2
 			bitMaskColors[6] = new Color( 0.5f, 0.7f, 0f, 1f); //RightFoot
 			bitMaskColors[7] = new Color( 0.2f, 0f, 0.2f, 1f); //Spine
 			bitMaskColors[8] = new Color( 0f, 0.8f, 0.2f, 1f); //Chest
-			bitMaskColors[9] = Color.blue; //Neck
-			bitMaskColors[10] = Color.blue; //Head
-			bitMaskColors[11] = Color.blue; //LeftShoulder
-			bitMaskColors[12] = Color.blue; //RightShoulder
-			bitMaskColors[13] = Color.blue; //LeftUpperArm
-			bitMaskColors[14] = Color.blue; //RightUpperArm
+			bitMaskColors[9] = new Color( 0.2f, 0.6f, 0.2f, 1f); //Neck
+			bitMaskColors[10] = new Color( 1f, 0.7f, 0f, 1f); //Head
+			bitMaskColors[11] = new Color( 1f, 0.25f, 0f, 1f); //LeftShoulder
+			bitMaskColors[12] = new Color( 1f, 0.9f, 0f, 1f); //RightShoulder
+			bitMaskColors[13] = new Color( 1f, 0f, 0.5f, 1f); //LeftUpperArm
+			bitMaskColors[14] = new Color( 0.6f, 0f, 0.65f, 1f); //RightUpperArm
 			bitMaskColors[15] = new Color(0.5f, 0.4f, 0f, 1f); //LeftLowerArm
 			bitMaskColors[16] = new Color(0.5f, 0.6f, 0f, 1f); //RightLowerArm
-			bitMaskColors[17] = Color.blue; //LeftHand
-			bitMaskColors[18] = Color.blue; //RightHand
-			bitMaskColors[19] = Color.blue; //LeftToes
-			bitMaskColors[20] = Color.blue; //RightToes
-			bitMaskColors[21] = Color.blue; //LeftEye
-			bitMaskColors[22] = Color.blue; //RightEye
+			bitMaskColors[17] = new Color(0.5f, 0f, 1f, 1f); //LeftHand
+			bitMaskColors[18] = new Color(0.3f, 0f, 0.75f, 1f); //RightHand
+			bitMaskColors[19] = new Color(0f, 1f, 0.75f, 1f); //LeftToes
+			bitMaskColors[20] = new Color(0f, 0.6f, 0.6f, 1f); //RightToes
+			bitMaskColors[21] = new Color(0.3f, 0.3f, 1f, 1f); //LeftEye
+			bitMaskColors[22] = new Color(0f, 0.2f, 0.7f, 1f); //RightEye
 		}
 
 #if UNITY_EDITOR
