@@ -72,6 +72,11 @@ namespace UMA.Dismemberment2
         HumanBodyBones setBoneMask;
         HumanBodyBones selectBoneMask;
 
+        private bool isSelecting = false; //is the user actively selecting
+        private const float drawTolerance = 10.0f; //in pixels
+        private Vector2 startMousePos;
+        private Color selectionBoxColor = new Color(0f, 1f, 0f, 0.1f);
+
         enum Plane
         {
             XY,
@@ -680,14 +685,58 @@ namespace UMA.Dismemberment2
                 return;
             }
 
+            Handles.BeginGUI();
+            GUI.Label(new Rect(10f, 10f, 1000f, 100f), "Left mouse click and hold to drag add vertices to the selection. \nHold Shift to Drag Select and remove vertices from the selection.");
+            Handles.EndGUI();
+
             serializedObject.Update();
 
+            Rect selectionRect = new Rect();
+            HandleUtility.AddDefaultControl(GUIUtility.GetControlID(GetHashCode(), FocusType.Passive));
+
             Transform mat = painter.transform;
+            Vector3[] transformedVertices = new Vector3[vertices.Length];
+            for (int i = 0; i < transformedVertices.Length; i++)
+            {
+                transformedVertices[i] = mat.TransformPoint(vertices[i]);
+            }
             Vector2[] uvs = GetUVChannel(meshData, handleChannel);
+            
+            if (isSelecting)
+            {
+                Vector2 selectionSize = (Event.current.mousePosition - startMousePos);
+                Vector2 correctedPos = startMousePos;
+                if (selectionSize.x < 0)
+                {
+                    selectionSize.x = Mathf.Abs(selectionSize.x);
+                    correctedPos.x = startMousePos.x - selectionSize.x;
+                }
+                if (selectionSize.y < 0)
+                {
+                    selectionSize.y = Mathf.Abs(selectionSize.y);
+                    correctedPos.y = startMousePos.y - selectionSize.y;
+                }
+
+                if (selectionSize.x > drawTolerance || selectionSize.y > drawTolerance)
+                {
+                    Handles.BeginGUI();
+                    selectionRect = new Rect(correctedPos, selectionSize);
+                    Handles.DrawSolidRectangleWithOutline(selectionRect, selectionBoxColor, Color.black);
+                    Handles.EndGUI();
+                    HandleUtility.Repaint();
+                }
+
+                if (Event.current.type == EventType.MouseDrag)
+                {
+                    SceneView.RepaintAll();
+                    Event.current.Use();
+                    return;
+                }
+            }
 
             for (int i = 0; i < vertices.Length; i++)
             {
-                Vector3 point = mat.TransformPoint(vertices[i]);
+                Vector3 point = transformedVertices[i];
                 if (selection[i])
                 {
                     Handles.color = selectionColor.colorValue;
@@ -730,9 +779,54 @@ namespace UMA.Dismemberment2
 							selectedVerts.GetArrayElementAtIndex(vert).boolValue = selection[i]; //update serialized backer.
 						}
 					}
+                    Event.current.Use();
 				}
 			}
-            
+
+            //Single mouse click
+            if (Event.current != null && Event.current.type == EventType.MouseDown && Event.current.button == 0 && !Event.current.alt)
+            {
+                isSelecting = true;
+                startMousePos = Event.current.mousePosition;
+                Event.current.Use();
+            }
+
+            //Done selecting
+            if (Event.current != null && Event.current.type == EventType.MouseUp && Event.current.button == 0 && !Event.current.alt)
+            {
+                if (isSelecting)
+                {
+                    isSelecting = false;
+
+                    bool selectionState = !Event.current.shift;
+
+                    Rect screenSelectionRect = new Rect();
+                    screenSelectionRect.min = HandleUtility.GUIPointToScreenPixelCoordinate(new Vector2(selectionRect.xMin, selectionRect.yMax));
+                    screenSelectionRect.max = HandleUtility.GUIPointToScreenPixelCoordinate(new Vector2(selectionRect.xMax, selectionRect.yMin));
+
+                    Vector3[] vertices = meshData.vertices;
+                    for (int i = 0; i < vertices.Length; i++)
+                    {
+                        Vector3 point = transformedVertices[i];
+                        point = SceneView.currentDrawingSceneView.camera.WorldToScreenPoint(point);
+
+                        if (screenSelectionRect.Contains(point))
+                        {
+                            int hash = vertices[i].GetHashCode();
+                            List<int> vertexList;
+                            if (vertexLocations.TryGetValue(hash, out vertexList))
+                            {
+                                foreach (int vert in vertexList)
+                                {
+                                    selection[vert] = selectionState;
+                                    selectedVerts.GetArrayElementAtIndex(vert).boolValue = selection[i]; //update serialized backer.
+                                }
+                            }
+                        }
+                    }
+                }
+                Event.current.Use();
+            }
 
             serializedObject.ApplyModifiedProperties();
         }
