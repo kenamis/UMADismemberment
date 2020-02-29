@@ -327,7 +327,7 @@ namespace UMA.Dismemberment2
             verticesBuffer.Clear();
             parent.GetVertices(verticesBuffer);
             trianglesBuffer.Clear();
-            trianglesBuffer.SetActiveSize((edges.Count - 1) * 3);
+            trianglesBuffer.AddRange( new int[(edges.Count - 1) * 3]);
             uvBuffer.Clear();
             parent.GetUVs(0, uvBuffer);
             normalBuffer.Clear();
