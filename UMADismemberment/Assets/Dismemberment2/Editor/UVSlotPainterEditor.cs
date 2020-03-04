@@ -1,8 +1,12 @@
 ﻿using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+#if UNITY_EDITOR
+using UnityEngine.Profiling;
+#endif
 
 namespace UMA.Dismemberment2
 {
@@ -51,8 +55,9 @@ namespace UMA.Dismemberment2
 
         bool showMaskColors = false;
 
-        float size = 0.05f;
+        float size = 0.001f;
         Vector3[] vertices;
+        Vector2[] meshuvs;
         bool[] selection;
 
 		Dictionary<int, List<int>> vertexLocations;
@@ -72,10 +77,19 @@ namespace UMA.Dismemberment2
         HumanBodyBones setBoneMask;
         HumanBodyBones selectBoneMask;
 
+        private bool showHandles = true;
         private bool isSelecting = false; //is the user actively selecting
         private const float drawTolerance = 10.0f; //in pixels
         private Vector2 startMousePos;
         private Color selectionBoxColor = new Color(0f, 1f, 0f, 0.1f);
+        private Rect selectionRect = new Rect();
+        private Quaternion direction = Quaternion.identity;
+
+        Matrix4x4 lastMatrix;
+        Vector3[] transformedVertices;
+
+        //GUI
+        static Rect labelRect = new Rect(10f, 10f, 1000f, 100f);
 
         enum Plane
         {
@@ -103,6 +117,7 @@ namespace UMA.Dismemberment2
                 meshData = meshFilter.sharedMesh;
 
                 vertices = meshData.vertices;
+                meshuvs = meshData.uv;
                 selectedVerts.arraySize = vertices.Length;
                 selection = new bool[vertices.Length];
                 for (int i = 0; i < vertices.Length; i++)
@@ -127,6 +142,8 @@ namespace UMA.Dismemberment2
                         vertexLocations.Add(hash, new List<int> { i });
                     }
                 }
+
+                transformedVertices = new Vector3[vertices.Length];
             }
 		}
 
@@ -137,7 +154,8 @@ namespace UMA.Dismemberment2
             GUILayout.Space(20);
             EditorGUILayout.BeginVertical(new GUIStyle("HelpBox"));
             EditorGUILayout.LabelField("Visual Preferences");
-            size = EditorGUILayout.Slider("Handle Size", size, 0.01f, 0.1f);
+            showHandles = EditorGUILayout.Toggle("Show Vertex Handles", showHandles);
+            size = EditorGUILayout.Slider("Handle Size", size, 0.0001f, 0.002f);
             EditorGUILayout.PropertyField(selectionColor);
             handleChannel = (UVChannel)EditorGUILayout.EnumPopup("Vertex Handle Channel", handleChannel);
             showMaskColors = EditorGUILayout.Foldout(showMaskColors, new GUIContent("Vertex Mask Colors", ""));
@@ -171,6 +189,14 @@ namespace UMA.Dismemberment2
                 ClearSelectedVerticesMask(meshData, clearChannel);
             }
             clearChannel = (UVChannel)EditorGUILayout.EnumPopup(clearChannel, GUILayout.MaxWidth(80));
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            if(GUILayout.Button("Set Data By Texture"))
+            {
+                SetDataByTexture(meshData, setChannel);
+            }
+            setChannel = (UVChannel)EditorGUILayout.EnumPopup(setChannel, GUILayout.MaxWidth(80));
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.EndVertical();
 
@@ -225,6 +251,17 @@ namespace UMA.Dismemberment2
                         selectedVerts.GetArrayElementAtIndex(index2).boolValue = true;
                     }
                 }
+            }
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            if(GUILayout.Button("Grow Selection"))
+            {
+
+            }
+            if(GUILayout.Button("Shrink Selection"))
+            {
+
             }
             EditorGUILayout.EndHorizontal();
 
@@ -290,6 +327,74 @@ namespace UMA.Dismemberment2
             }
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private byte ConvertColorToByte(byte b, int interval)
+        {
+            int exponent = b / interval;
+            exponent = (int)Mathf.Pow(2, exponent);
+            return (byte)exponent;
+        }
+
+        private void SetDataByTexture(Mesh meshData, UVChannel channel)
+        {
+            Vector2[] uvs = GetUVChannel(meshData, channel);
+            if (uvs == null)
+                return;
+
+            string filePath = EditorUtility.OpenFilePanel("Load Texture", "", "png");
+
+            if (filePath.Length != 0)
+            {
+                byte[] fileData = File.ReadAllBytes(filePath);
+                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
+                if(texture.LoadImage(fileData))
+                {
+                    int width = texture.width;
+                    int height = texture.height;
+                    bool badData = false;
+
+                    for(int i = 0; i < vertices.Length; i++)
+                    {
+                        Color32 color = texture.GetPixel((int)(meshuvs[i].x * width), (int)(meshuvs[i].y * height));
+                        byte[] bytes = new byte[4];
+                        bytes[0] = color.r;
+                        bytes[1] = color.g;
+                        bytes[2] = color.b;
+                        bytes[3] = 0;// color.a;
+                        if (bytes[0] > 0 && bytes[1] == 0 && bytes[2] == 0)
+                        {
+                            bytes[0] = ConvertColorToByte(bytes[0], 32);
+                        }
+                        if (bytes[1] > 0 && bytes[0] == 0 && bytes[2] == 0)
+                        {
+                            bytes[1] = ConvertColorToByte(bytes[1], 32);
+                        }
+                        if(bytes[2] > 0 && bytes[0] == 0 && bytes[1] == 0)
+                        {
+                            bytes[2] = ConvertColorToByte(bytes[2], 32);
+                        }
+
+                        if((bytes[0] > 0 && bytes[1] > 0) || (bytes[1] > 0 && bytes[2] > 0) || (bytes[0] > 0 && bytes[2] > 0))
+                        {
+                            badData = true;
+                            uvs[i].x = 0;
+                        }
+                        else
+                        {
+                            uvs[i].x = BitConverter.ToInt32(bytes, 0);
+                        }
+                    }
+
+                    if(badData)
+                    {
+                        Debug.LogError("This texture contains some invalid color values for the bitmask!");
+                    }
+
+                    SetUVChannel(meshData, channel, uvs);
+                    Debug.Log("Complete...");
+                }
+            }
         }
 
         private void SaveToSlotDataAsset(UVChannel channel)
@@ -674,6 +779,14 @@ namespace UMA.Dismemberment2
         }
         #endregion
 
+        void UpdateTransformedVertices(Transform transform)
+        {
+            for (int i = 0; i < transformedVertices.Length; i++)
+            {
+                transformedVertices[i] = transform.TransformPoint(vertices[i]);
+            }
+        }
+
         void OnSceneGUI()
         {
             UVSlotPainter painter = (target as UVSlotPainter);
@@ -686,22 +799,26 @@ namespace UMA.Dismemberment2
             }
 
             Handles.BeginGUI();
-            GUI.Label(new Rect(10f, 10f, 1000f, 100f), "Left mouse click and hold to drag add vertices to the selection. \nHold Shift to Drag Select and remove vertices from the selection.");
+            GUI.Label(labelRect, "Left mouse click and hold to drag add vertices to the selection. \nHold Shift to Drag Select and remove vertices from the selection.");
             Handles.EndGUI();
 
-            serializedObject.Update();
+            //serializedObject.Update();
 
-            Rect selectionRect = new Rect();
+            selectionRect.x = 0;
+            selectionRect.y = 0;
+            selectionRect.width = 0;
+            selectionRect.height = 0;
+
             HandleUtility.AddDefaultControl(GUIUtility.GetControlID(GetHashCode(), FocusType.Passive));
 
-            Transform mat = painter.transform;
-            Vector3[] transformedVertices = new Vector3[vertices.Length];
-            for (int i = 0; i < transformedVertices.Length; i++)
+            Transform transform = painter.transform;
+            if (transform.localToWorldMatrix != lastMatrix)
             {
-                transformedVertices[i] = mat.TransformPoint(vertices[i]);
+                UpdateTransformedVertices(painter.transform);
+                lastMatrix = transform.localToWorldMatrix;
             }
+
             Vector2[] uvs = GetUVChannel(meshData, handleChannel);
-            
             if (isSelecting)
             {
                 Vector2 selectionSize = (Event.current.mousePosition - startMousePos);
@@ -736,7 +853,6 @@ namespace UMA.Dismemberment2
 
             for (int i = 0; i < vertices.Length; i++)
             {
-                Vector3 point = transformedVertices[i];
                 if (selection[i])
                 {
                     Handles.color = selectionColor.colorValue;
@@ -751,12 +867,19 @@ namespace UMA.Dismemberment2
                         {
                             mask = (int)Mathf.Log(mask, 2);
                             //Handles.color = bitMaskColors.GetArrayElementAtIndex(mask).colorValue; //slow
-                            Handles.color = painter.bitMaskColors[mask];
+                            if (mask < painter.bitMaskColors.Length)
+                            {
+                                Handles.color = painter.bitMaskColors[mask];
+                            }
+                            else
+                            {
+                                Handles.color = Color.cyan;
+                            }
                         }
                         else
                         {
                             Handles.color = Color.black;
-                        }                                
+                        }
                     }
                     else
                     {
@@ -764,24 +887,27 @@ namespace UMA.Dismemberment2
                     }
                 }
 
-                if(Handles.Button(point, Quaternion.identity, HandleUtility.GetHandleSize(point) * size, HandleUtility.GetHandleSize(point) * size, Handles.DotHandleCap ))
+                if (showHandles)
                 {
-					selection[i] = !selection[i];
-                    //selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i]; //update serialized backer.
+                    if (Handles.Button(transformedVertices[i], direction, size, size, Handles.DotHandleCap))
+                    {
+                        selection[i] = !selection[i];
+                        //selectedVerts.GetArrayElementAtIndex(i).boolValue = selection[i]; //update serialized backer.
 
-					int hash = vertices[i].GetHashCode();
-					List<int> vertexList;
-					if (vertexLocations.TryGetValue(hash, out vertexList))
-					{
-						foreach (int vert in vertexList)
-						{
-							selection[vert] = selection[i];
-							selectedVerts.GetArrayElementAtIndex(vert).boolValue = selection[i]; //update serialized backer.
-						}
-					}
-                    Event.current.Use();
-				}
-			}
+                        int hash = vertices[i].GetHashCode();
+                        List<int> vertexList;
+                        if (vertexLocations.TryGetValue(hash, out vertexList))
+                        {
+                            foreach (int vert in vertexList)
+                            {
+                                selection[vert] = selection[i];
+                                selectedVerts.GetArrayElementAtIndex(vert).boolValue = selection[i]; //update serialized backer.
+                            }
+                        }
+                        Event.current.Use();
+                    }
+                }
+            }
 
             //Single mouse click
             if (Event.current != null && Event.current.type == EventType.MouseDown && Event.current.button == 0 && !Event.current.alt)
@@ -828,7 +954,7 @@ namespace UMA.Dismemberment2
                 Event.current.Use();
             }
 
-            serializedObject.ApplyModifiedProperties();
+            //serializedObject.ApplyModifiedProperties();
         }
     }
 }
