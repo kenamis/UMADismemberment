@@ -57,6 +57,7 @@ namespace UMA.Dismemberment2
 
         float size = 0.001f;
         Vector3[] vertices;
+        int[] triangles;
         Vector2[] meshuvs;
         bool[] selection;
 
@@ -117,6 +118,7 @@ namespace UMA.Dismemberment2
                 meshData = meshFilter.sharedMesh;
 
                 vertices = meshData.vertices;
+                triangles = meshData.triangles;
                 meshuvs = meshData.uv;
                 selectedVerts.arraySize = vertices.Length;
                 selection = new bool[vertices.Length];
@@ -235,7 +237,7 @@ namespace UMA.Dismemberment2
             EditorGUI.EndDisabledGroup();
             if(GUILayout.Button("Select All Edges"))
             {
-                List<Edge> edges = GetMeshEdges(meshData.vertices, meshData.triangles);
+                List<Edge> edges = GetMeshEdges(vertices, triangles);
                 if (edges != null)
                 {
                     ClearSelection();
@@ -257,11 +259,11 @@ namespace UMA.Dismemberment2
             EditorGUILayout.BeginHorizontal();
             if(GUILayout.Button("Grow Selection"))
             {
-
+                GrowSelection();
             }
             if(GUILayout.Button("Shrink Selection"))
             {
-
+                ShrinkSelection();
             }
             EditorGUILayout.EndHorizontal();
 
@@ -327,6 +329,17 @@ namespace UMA.Dismemberment2
             }
 
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private void ShrinkSelection()
+        {
+            //GetMeshEdges(vertices, );
+            throw new NotImplementedException();
+        }
+
+        private void GrowSelection()
+        {
+            throw new NotImplementedException();
         }
 
         private byte ConvertColorToByte(byte b, int interval)
@@ -612,7 +625,7 @@ namespace UMA.Dismemberment2
                     {
                         if (EditorUtility.DisplayDialog("No UV Channel", "UV Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            meshData.uv = new Vector2[meshData.vertices.Length];
+                            meshData.uv = new Vector2[meshData.vertexCount];
                         }
                         else
                         {
@@ -620,9 +633,9 @@ namespace UMA.Dismemberment2
                         }
                     }
 
-                    if (meshData.uv.Length < meshData.vertices.Length)
+                    if (meshData.uv.Length < meshData.vertexCount)
                     {
-                        Vector2[] uvs = new Vector2[meshData.vertices.Length];
+                        Vector2[] uvs = new Vector2[meshData.vertexCount];
                         meshData.uv.CopyTo(uvs, 0);
                         meshData.uv = uvs;
                     }
@@ -632,16 +645,16 @@ namespace UMA.Dismemberment2
                     {
                         if (EditorUtility.DisplayDialog("No UV2 Channel", "UV2 Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            meshData.uv2 = new Vector2[meshData.vertices.Length];
+                            meshData.uv2 = new Vector2[meshData.vertexCount];
                         }
                         else
                         {
                             return null;
                         }
                     }
-                    if (meshData.uv2.Length < meshData.vertices.Length)
+                    if (meshData.uv2.Length < meshData.vertexCount)
                     {
-                        Vector2[] uvs = new Vector2[meshData.vertices.Length];
+                        Vector2[] uvs = new Vector2[meshData.vertexCount];
                         meshData.uv2.CopyTo(uvs, 0);
                         meshData.uv2 = uvs;
                     }
@@ -651,16 +664,16 @@ namespace UMA.Dismemberment2
                     {
                         if (EditorUtility.DisplayDialog("No UV3 Channel", "UV3 Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            meshData.uv3 = new Vector2[meshData.vertices.Length];
+                            meshData.uv3 = new Vector2[meshData.vertexCount];
                         }
                         else
                         {
                             return null;
                         }
                     }
-                    if (meshData.uv3.Length < meshData.vertices.Length)
+                    if (meshData.uv3.Length < meshData.vertexCount)
                     {
-                        Vector2[] uvs = new Vector2[meshData.vertices.Length];
+                        Vector2[] uvs = new Vector2[meshData.vertexCount];
                         meshData.uv3.CopyTo(uvs, 0);
                         meshData.uv3 = uvs;
                     }
@@ -670,16 +683,16 @@ namespace UMA.Dismemberment2
                     {
                         if (EditorUtility.DisplayDialog("No UV4 Channel", "UV4 Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            meshData.uv4 = new Vector2[meshData.vertices.Length];
+                            meshData.uv4 = new Vector2[meshData.vertexCount];
                         }
                         else
                         {
                             return null;
                         }
                     }
-                    if (meshData.uv4.Length < meshData.vertices.Length)
+                    if (meshData.uv4.Length < meshData.vertexCount)
                     {
-                        Vector2[] uvs = new Vector2[meshData.vertices.Length];
+                        Vector2[] uvs = new Vector2[meshData.vertexCount];
                         meshData.uv4.CopyTo(uvs, 0);
                         meshData.uv4 = uvs;
                     }
@@ -689,7 +702,7 @@ namespace UMA.Dismemberment2
                     {
                         if (EditorUtility.DisplayDialog("No UV2 Channel", "UV2 Channel does not exist on this mesh.  Create one?", "OK", "Cancel"))
                         {
-                            meshData.uv2 = new Vector2[meshData.vertices.Length];
+                            meshData.uv2 = new Vector2[meshData.vertexCount];
                         }
                         else
                         {
