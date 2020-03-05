@@ -60,8 +60,15 @@ namespace UMA.Dismemberment2
         int[] triangles;
         Vector2[] meshuvs;
         bool[] selection;
+        HashSet<Edge> allEdges;
 
 		Dictionary<int, List<int>> vertexLocations;
+
+        string[] dimensionNames = { "64", "128", "256", "512", "1024", "2048" };
+        int[] dimensionValues = { 64, 128, 256, 512, 1024, 2048 };
+
+        int exportWidth = 512;
+        int exportHeight = 512;
 
         enum UVChannel
         {
@@ -120,6 +127,7 @@ namespace UMA.Dismemberment2
                 vertices = meshData.vertices;
                 triangles = meshData.triangles;
                 meshuvs = meshData.uv;
+                allEdges = GetMeshEdges(vertices, triangles);
                 selectedVerts.arraySize = vertices.Length;
                 selection = new bool[vertices.Length];
                 for (int i = 0; i < vertices.Length; i++)
@@ -237,7 +245,7 @@ namespace UMA.Dismemberment2
             EditorGUI.EndDisabledGroup();
             if(GUILayout.Button("Select All Edges"))
             {
-                List<Edge> edges = GetMeshEdges(vertices, triangles);
+                List<Edge> edges = GetMeshBorders(vertices, triangles);
                 if (edges != null)
                 {
                     ClearSelection();
@@ -293,6 +301,21 @@ namespace UMA.Dismemberment2
             saveChannel = (UVChannel)EditorGUILayout.EnumPopup(saveChannel, GUILayout.MaxWidth(80));
             EditorGUILayout.EndHorizontal();
 
+            EditorGUILayout.BeginHorizontal();
+            if(GUILayout.Button("Export UV Layout"))
+            {
+                string path = EditorUtility.SaveFilePanel("Save UV Layout", "", "layout", "png");
+                if(path.Length != 0)
+                {
+                    byte[] data = CreateUVLayoutTexture(exportWidth, exportHeight).EncodeToPNG();
+                    System.IO.File.WriteAllBytes(path, data);
+                    Debug.Log("Complete...");
+                }
+            }
+            exportWidth = EditorGUILayout.IntPopup(exportWidth, dimensionNames, dimensionValues, GUILayout.MaxWidth(80));
+            exportHeight = EditorGUILayout.IntPopup(exportHeight, dimensionNames, dimensionValues, GUILayout.MaxWidth(80));
+            EditorGUILayout.EndHorizontal();
+
             EditorGUILayout.LabelField("Selected Vertices: " + GetSelectionCount().ToString());
 
             if (meshData.uv != null && meshData.uv.Length > 0)
@@ -331,15 +354,179 @@ namespace UMA.Dismemberment2
             serializedObject.ApplyModifiedProperties();
         }
 
+        private Texture2D CreateUVLayoutTexture(int width, int height)
+        {
+            Texture2D texture = new Texture2D(width, height, TextureFormat.ARGB32, false, true);
+            Vector2 uv0;
+            Vector2 uv1;
+            Vector2 uv2;
+
+            //create the background by initializing the colors array to all black.
+            Color32[] colors = new Color32[width * height];
+            for(int i = 0; i < colors.Length; i++)
+            {
+                colors[i] = Color.black;
+            }
+            texture.SetPixels32(0, 0, width - 1, height - 1, colors);
+
+            for(int i = 0; i < triangles.Length; i+=3)
+            {
+                uv0 = meshuvs[triangles[i]];
+                uv1 = meshuvs[triangles[i + 1]];
+                uv2 = meshuvs[triangles[i + 2]];
+
+                uv0.x *= width;
+                uv0.y *= height;
+
+                uv1.x *= width;
+                uv1.y *= height;
+
+                uv2.x *= width;
+                uv2.y *= height;
+
+                DrawLine(texture, (int)uv0.x, (int)uv0.y, (int)uv1.x, (int)uv1.y, Color.white);
+                DrawLine(texture, (int)uv1.x, (int)uv1.y, (int)uv2.x, (int)uv2.y, Color.white);
+                DrawLine(texture, (int)uv0.x, (int)uv0.y, (int)uv2.x, (int)uv2.y, Color.white);
+            }
+
+            return texture;
+        }
+
+        /// <summary>
+        /// From wiki at http://wiki.unity3d.com/index.php/TextureDrawLine
+        /// </summary>
+        /// <param name="tex"></param>
+        /// <param name="x1"></param>
+        /// <param name="y1"></param>
+        /// <param name="x2"></param>
+        /// <param name="y2"></param>
+        /// <param name="col"></param>
+        private void DrawLine(Texture2D tex, int x0, int y0, int x1, int y1, Color col)
+        {
+            int dy = (int)(y1 - y0);
+            int dx = (int)(x1 - x0);
+            int stepx, stepy;
+
+            if (dy < 0) { dy = -dy; stepy = -1; }
+            else { stepy = 1; }
+            if (dx < 0) { dx = -dx; stepx = -1; }
+            else { stepx = 1; }
+            dy <<= 1;
+            dx <<= 1;
+
+            float fraction = 0;
+
+            tex.SetPixel(x0, y0, col);
+            if (dx > dy)
+            {
+                fraction = dy - (dx >> 1);
+                while (Mathf.Abs(x0 - x1) > 1)
+                {
+                    if (fraction >= 0)
+                    {
+                        y0 += stepy;
+                        fraction -= dx;
+                    }
+                    x0 += stepx;
+                    fraction += dy;
+                    tex.SetPixel(x0, y0, col);
+                }
+            }
+            else
+            {
+                fraction = dx - (dy >> 1);
+                while (Mathf.Abs(y0 - y1) > 1)
+                {
+                    if (fraction >= 0)
+                    {
+                        x0 += stepx;
+                        fraction -= dy;
+                    }
+                    y0 += stepy;
+                    fraction += dx;
+                    tex.SetPixel(x0, y0, col);
+                }
+            }
+        }
+
         private void ShrinkSelection()
         {
-            //GetMeshEdges(vertices, );
-            throw new NotImplementedException();
+            List<int> unselectVertices = new List<int>();
+            List<int> sameVerts;
+
+            foreach(Edge edge in allEdges)
+            {
+                if(selection[edge.index1] && !selection[edge.index2])
+                {
+                    if (vertexLocations.TryGetValue(vertices[edge.index1].GetHashCode(), out sameVerts))
+                    {
+                        unselectVertices.AddRange(sameVerts);
+                    }
+                    else
+                    {
+                        unselectVertices.Add(edge.index1);
+                    }
+                }
+
+                if (!selection[edge.index1] && selection[edge.index2])
+                {
+                    if (vertexLocations.TryGetValue(vertices[edge.index2].GetHashCode(), out sameVerts))
+                    {
+                        unselectVertices.AddRange(sameVerts);
+                    }
+                    else
+                    {
+                        unselectVertices.Add(edge.index2);
+                    }
+                }
+            }
+
+            for(int i = 0; i < unselectVertices.Count; i++)
+            {
+                selection[unselectVertices[i]] = false;
+                selectedVerts.GetArrayElementAtIndex(unselectVertices[i]).boolValue = false;
+
+            }
         }
 
         private void GrowSelection()
         {
-            throw new NotImplementedException();
+            List<int> selectVertices = new List<int>();
+            List<int> sameVerts;
+
+            foreach (Edge edge in allEdges)
+            {
+                if (selection[edge.index1] && !selection[edge.index2])
+                {
+                    if (vertexLocations.TryGetValue(vertices[edge.index2].GetHashCode(), out sameVerts))
+                    {
+                        selectVertices.AddRange(sameVerts);
+                    }
+                    else
+                    {
+                        selectVertices.Add(edge.index2);
+                    }
+                }
+
+                if (!selection[edge.index1] && selection[edge.index2])
+                {
+                    if (vertexLocations.TryGetValue(vertices[edge.index1].GetHashCode(), out sameVerts))
+                    {
+                        selectVertices.AddRange(sameVerts);
+                    }
+                    else
+                    {
+                        selectVertices.Add(edge.index1);
+                    }
+                }
+            }
+
+            for (int i = 0; i < selectVertices.Count; i++)
+            {
+                selection[selectVertices[i]] = true;
+                selectedVerts.GetArrayElementAtIndex(selectVertices[i]).boolValue = true;
+
+            }
         }
 
         private byte ConvertColorToByte(byte b, int interval)
@@ -550,7 +737,25 @@ namespace UMA.Dismemberment2
             return -1;
         }
 
-        private List<Edge> GetMeshEdges(Vector3[] vertices, int[] triangles)
+        private HashSet<Edge> GetMeshEdges(Vector3[] vertices, int[] triangles)
+        {
+            HashSet<Edge> edges = new HashSet<Edge>();
+
+            for (int i = 0; i < triangles.Length; i += 3)
+            {
+                var v1 = vertices[triangles[i]];
+                var v2 = vertices[triangles[i + 1]];
+                var v3 = vertices[triangles[i + 2]];
+
+                edges.Add(new Edge(v1, triangles[i], v2, triangles[i + 1]));
+                edges.Add(new Edge(v1, triangles[i], v3, triangles[i + 2]));
+                edges.Add(new Edge(v2, triangles[i + 1], v3, triangles[i + 2]));
+            }
+
+            return edges;
+        }
+
+        private List<Edge> GetMeshBorders(Vector3[] vertices, int[] triangles)
         {
             Dictionary<Edge, int> edges = new Dictionary<Edge, int>();
 
