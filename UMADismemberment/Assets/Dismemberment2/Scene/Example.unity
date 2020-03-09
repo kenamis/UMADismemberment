@@ -4656,9 +4656,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   useEvents: 1
   sliceFill: {fileID: 2100000, guid: 0cbd20782733f6540925991b3825db2e, type: 2}
+  globalThreshold: 0.01
   hierarchyAsset: {fileID: 11400000, guid: e90463ab62314524294531375adc6c38, type: 2}
   useSliceable: 0
-  sliceableHumanBones: 
+  sliceableHumanBones: []
   DismemberedEvent:
     m_PersistentCalls:
       m_Calls: []

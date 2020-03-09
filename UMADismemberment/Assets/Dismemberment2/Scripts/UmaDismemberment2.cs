@@ -35,6 +35,15 @@ namespace UMA.Dismemberment2
             public Transform targetBone;
         }
 
+        //For Legacy
+        [System.Serializable]
+        public struct BoneInfo
+        {
+            public HumanBodyBones humanBone;
+            [Range(0.01f, 1f)]
+            public float threshold;
+        }
+
         [Tooltip("Whether to invoke the Dismembered event or not.")]
         public bool useEvents = false;
 
@@ -42,12 +51,17 @@ namespace UMA.Dismemberment2
         public Material sliceFill;
         private Material sliceFillInstance;
 
+        //For Legacy
+        [Range(0.01f, 1f)]
+        [Tooltip("For Legacy. The total weight threshold to include a vertex in the slice or not.")]
+        public float globalThreshold = 0.01f;
+
         public DismembermentHierarchyAsset hierarchyAsset;
 
         [Tooltip("If so, only allow these bones to be slice, otherwise any bone can be sliced.")]
         public bool useSliceable = true;
         [Tooltip("The human bones (and all its children) that are sliceable.")]
-        public List<HumanBodyBones> sliceableHumanBones = new List<HumanBodyBones>();
+        public List<BoneInfo> sliceableHumanBones = new List<BoneInfo>();
 
         public HashSet<Transform> hasSplit;
         public Dismembered DismemberedEvent;
@@ -57,20 +71,22 @@ namespace UMA.Dismemberment2
         Animator animator;
 
         Dictionary<int, SkinnedMeshRenderer> capMeshes = new Dictionary<int, SkinnedMeshRenderer>();
+        Dictionary<string, SkinnedMeshRenderer> capMeshes_Legacy = new Dictionary<string, SkinnedMeshRenderer>();
 
         List<int> outerTris;
         List<int> innerTris;
         List<int> edges;
 
         private List<int> tris;
+        private List<BoneWeight> weights; //for legacy
 
         static List<Vector3> verticesBuffer = new List<Vector3>(20); //reuse list to reduce garbage in cap
-        static List<Vector3> parentVerticesBuffer = new List<Vector3>();
+        static List<Vector3> parentVerticesBuffer = new List<Vector3>(10000);
         static List<int> trianglesBuffer = new List<int>(60);
         static List<Vector2> uvBuffer = new List<Vector2>(20);
         static List<Vector3> normalBuffer = new List<Vector3>(20);
         static List<BoneWeight> boneweightBuffer = new List<BoneWeight>(20);
-        static List<BoneWeight> parentBoneweightBuffer = new List<BoneWeight>();
+        static List<BoneWeight> parentBoneweightBuffer = new List<BoneWeight>(10000);
 
         // Use this for initialization
         void Start()
@@ -89,7 +105,8 @@ namespace UMA.Dismemberment2
             outerTris = new List<int>(40000);
             innerTris = new List<int>(40000);
             edges = new List<int>(500);
-            tris = new List<int>(8000);
+            tris = new List<int>(12000);
+            weights = new List<BoneWeight>(10000); //for legacy
         }
 
         void OnValidate()
@@ -106,6 +123,66 @@ namespace UMA.Dismemberment2
         {
             smr = umaData.GetRenderer(0);
         }
+
+        #region Legacy Functions
+        /// <summary>
+        /// For Legacy
+        /// </summary>
+        /// <param name="bone"></param>
+        /// <returns></returns>
+        private bool[] GenerateBoneNumbers(Transform bone)
+        {
+            if (bone == null)
+                return null;
+            //Profiler.BeginSample("GenerateBoneNumbers");
+            Transform[] smrBones = smr.bones;
+            bool[] bones = new bool[smrBones.Length];
+
+            foreach (Transform t in bone.GetComponentsInChildren<Transform>())
+            {
+                for (int i = 0; i < smrBones.Length; i++)
+                {
+                    if (smrBones[i] == t) { bones[i] = true; }
+                }
+            }
+            //Profiler.EndSample();
+            return bones;
+        }
+
+        /// <summary>
+        /// For legacy
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="indices"></param>
+        /// <param name="threshold"></param>
+        /// <returns></returns>
+        private static bool IsPartOf(BoneWeight b, bool[] indices, float threshold)
+        {
+            float weight = 0;
+
+            if (indices[b.boneIndex0]) weight += b.weight0;
+            if (indices[b.boneIndex1]) weight += b.weight1;
+            if (indices[b.boneIndex2]) weight += b.weight2;
+            if (indices[b.boneIndex3]) weight += b.weight3;
+
+            return (weight > threshold);
+        }
+
+        /// <summary>
+        /// For legacy
+        /// </summary>
+        /// <param name="humanBone"></param>
+        /// <returns></returns>
+        private int ContainsBone(HumanBodyBones humanBone)
+        {
+            for (int i = 0; i < sliceableHumanBones.Count; i++)
+            {
+                if (sliceableHumanBones[i].humanBone == humanBone)
+                    return i;
+            }
+            return -1;
+        }
+        #endregion
 
         /// <summary>
         /// Slice by Human Bone.
@@ -124,9 +201,11 @@ namespace UMA.Dismemberment2
             if (!ValidateHumanBone(humanBone, out bone))
                 return;
 
+            int index = -1;
             if (useSliceable)
             {
-                if(!sliceableHumanBones.Contains(humanBone))
+                index = ContainsBone(humanBone);
+                if (index == -1)
                     return;
             }
 
@@ -140,15 +219,189 @@ namespace UMA.Dismemberment2
             }
         }
 
-        private void SliceInternal(Transform bone, int bitMask, ref DismemberedInfo info, int uvChannel = 2)
+        /// <summary>
+        /// Slice by bone transform. Has both legacy and new slice methods.
+        /// </summary>
+        /// <param name="bone">Bone to slice by.</param>
+        /// <param name="threshold">Threshold to use as the bone weighting to slice by.</param>
+        /// <param name="bitMask">The bitmask to slice by.</param>
+        /// <param name="info">Out struct with the Dismembered Info.</param>
+        /// <param name="uvChannel">UV Channel data to use for the slice.</param>
+        /// <param name="useLegacy">Flag for whether to use legacy slice or new slice.</param>
+        /// <returns></returns>
+        public bool Slice(Transform bone, float threshold, int bitMask, out DismemberedInfo info, int uvChannel = 2, bool useLegacy = true)
+        {
+            info = new DismemberedInfo();
+
+            if (useLegacy)
+            {
+                return SliceInternal_Legacy(bone, threshold, ref info);
+            }
+            else
+            {
+                return SliceInternal(bone, bitMask, ref info, uvChannel);
+            }
+        }
+
+        private bool SliceInternal_Legacy(Transform bone, float threshold, ref DismemberedInfo info)
         {
             if (bone == null)
             {
                 if (Debug.isDebugBuild)
                     Debug.LogError("Bone is null!");
-                return;
+                return false;
             }
-            //Profiler.BeginSample("Slice");
+            Profiler.BeginSample("Slice");
+            edges.Clear();
+            weights.Clear();
+            smr.sharedMesh.GetBoneWeights(weights);
+
+            Transform[] smrBones = smr.bones;
+            bool[] boneMask = GenerateBoneNumbers(bone);
+            bool[] computedWeights = new bool[weights.Count];
+
+            //precompute the weights so we aren't wasting computation on the same vertex.
+            for (int i = 0; i < computedWeights.Length; i++)
+            {
+                computedWeights[i] = IsPartOf(weights[i], boneMask, threshold);
+            }
+
+            Mesh innerMesh = Instantiate<Mesh>(smr.sharedMesh);
+
+            //Create new root GameObject and all it's children bones
+            GameObject splitRootObj = new GameObject(bone.name, typeof(SkinnedMeshRenderer));
+            splitRootObj.transform.position = gameObject.transform.position;
+            splitRootObj.transform.rotation = gameObject.transform.rotation;
+            splitRootObj.transform.localScale = gameObject.transform.localScale;
+
+            GameObject root = gameObject.transform.Find("Root").gameObject;
+            Transform[] newBones;
+            Transform targetBone;
+            CreateBones(root, splitRootObj, smrBones, smrBones.Length, bone, out newBones, out targetBone);
+
+            //Create the new renderer to copy the split mesh to.
+            SkinnedMeshRenderer newSmr = splitRootObj.GetComponent<SkinnedMeshRenderer>();
+            newSmr.bones = newBones;
+            newSmr.sharedMesh = innerMesh;
+            newSmr.sharedMesh.name = bone.name;
+            newSmr.sharedMaterials = smr.sharedMaterials;
+
+            bool anyTrianglesSet = false;
+            for (int subMeshIndex = 0; subMeshIndex < smr.sharedMesh.subMeshCount; subMeshIndex++)
+            {
+                tris.Clear();
+                innerMesh.GetTriangles(tris, subMeshIndex);
+                innerTris.Clear();
+                outerTris.Clear();
+
+                for (int i = 0; i < tris.Count; i += 3)
+                {
+                    int tri0 = tris[i];
+                    int tri1 = tris[i + 1];
+                    int tri2 = tris[i + 2];
+
+                    bool vert1 = computedWeights[tri0];
+                    bool vert2 = computedWeights[tri1];
+                    bool vert3 = computedWeights[tri2];
+
+                    if (vert1 || vert2 || vert3)
+                    {
+                        if (vert1 && !vert2 && !vert3) { edges.Add(tri1); edges.Add(tri2); }
+                        if (!vert1 && vert2 && !vert3) { edges.Add(tri2); edges.Add(tri0); }
+                        if (!vert1 && !vert2 && vert3) { edges.Add(tri0); edges.Add(tri1); }
+
+                        innerTris.Add(tri0);
+                        innerTris.Add(tri1);
+                        innerTris.Add(tri2);
+                    }
+                    else
+                    {
+                        outerTris.Add(tri0);
+                        outerTris.Add(tri1);
+                        outerTris.Add(tri2);
+                    }
+                }
+
+                if (innerTris.Count > 0)
+                {
+                    anyTrianglesSet = true;
+                    smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
+                    innerMesh.SetTriangles(innerTris, subMeshIndex);
+                }
+            }
+
+            if(!anyTrianglesSet)
+            {
+                Destroy(newSmr.gameObject);
+                return false;
+            }
+
+            GameObject capInner = new GameObject("Cap", typeof(SkinnedMeshRenderer));
+            GameObject capOuter = new GameObject("Cap", typeof(SkinnedMeshRenderer));
+
+            SkinnedMeshRenderer capInnerSmr = capInner.GetComponent<SkinnedMeshRenderer>();
+            SkinnedMeshRenderer capOuterSmr = capOuter.GetComponent<SkinnedMeshRenderer>();
+
+            //Reparent the cap mesh on the SMR to the new SMR
+            Transform[] boneChildren = bone.GetComponentsInChildren<Transform>();
+            List<string> boneNames = new List<string>();
+            for(int i = 0; i < boneChildren.Length; i++)
+            {
+                boneNames.Add(boneChildren[i].name);
+            }
+
+            List<int> removeList = new List<int>();
+            foreach (KeyValuePair<string, SkinnedMeshRenderer> pair in capMeshes_Legacy)
+            {
+                if(boneNames.Contains(pair.Key))
+                {
+                    pair.Value.transform.SetParent(newSmr.transform);
+                    pair.Value.bones = newSmr.bones;
+                }
+            }
+            foreach (int id in removeList)
+            {
+                capMeshes.Remove(id);
+            }
+            capMeshes_Legacy.Add(bone.name, capOuterSmr);
+
+            capInner.transform.SetParent(newSmr.transform);
+            capOuter.transform.SetParent(smr.transform);
+
+            capInnerSmr.sharedMesh = CapMesh(innerMesh, edges, false);
+            capOuterSmr.sharedMesh = CapMesh(smr.sharedMesh, edges, true);
+            capInnerSmr.bones = newSmr.bones;
+            capOuterSmr.bones = smr.bones;
+            capInnerSmr.materials = new Material[1];
+            capInnerSmr.material = sliceFillInstance;
+            capOuterSmr.materials = new Material[1];
+            capOuterSmr.material = sliceFillInstance;
+
+            hasSplit.Add(bone);
+
+            //Fill out DismemberedInfo
+            info.root = splitRootObj.transform;
+            info.targetBone = targetBone;
+
+            //Event callback
+            if (useEvents)
+            {
+                DismemberedEvent.Invoke(splitRootObj.transform, targetBone);
+            }
+            Profiler.EndSample();
+            return true;
+        }
+
+
+        private bool SliceInternal(Transform bone, int bitMask, ref DismemberedInfo info, int uvChannel = 2)
+        {
+            if (bone == null)
+            {
+                if (Debug.isDebugBuild)
+                    Debug.LogError("Bone is null!");
+                return false;
+            }
+            Profiler.BeginSample("Slice");
             edges.Clear();
 
             Transform[] smrBones = smr.bones;
@@ -199,6 +452,7 @@ namespace UMA.Dismemberment2
             newSmr.sharedMesh.name = bone.name;
             newSmr.sharedMaterials = smr.sharedMaterials;
 
+            bool anyTrianglesSet = false;
             for (int subMeshIndex = 0; subMeshIndex < smr.sharedMesh.subMeshCount; subMeshIndex++)
             {
                 tris.Clear();
@@ -208,30 +462,44 @@ namespace UMA.Dismemberment2
 
                 for (int i = 0; i < tris.Count; i += 3)
                 {
-                    bool vert1 = computedMask[tris[i]];
-                    bool vert2 = computedMask[tris[i + 1]];
-                    bool vert3 = computedMask[tris[i + 2]];
+                    int tri0 = tris[i];
+                    int tri1 = tris[i + 1];
+                    int tri2 = tris[i + 2];
+
+                    bool vert1 = computedMask[tri0];
+                    bool vert2 = computedMask[tri1];
+                    bool vert3 = computedMask[tri2];
 
                     if (vert1 || vert2 || vert3)
                     {
-                        if (vert1 && !vert2 && !vert3) { edges.Add(tris[i + 1]); edges.Add(tris[i + 2]); }
-                        if (!vert1 && vert2 && !vert3) { edges.Add(tris[i + 2]); edges.Add(tris[i + 0]); }
-                        if (!vert1 && !vert2 && vert3) { edges.Add(tris[i + 0]); edges.Add(tris[i + 1]); }
+                        if (vert1 && !vert2 && !vert3) { edges.Add(tri1); edges.Add(tri2); }
+                        if (!vert1 && vert2 && !vert3) { edges.Add(tri2); edges.Add(tri0); }
+                        if (!vert1 && !vert2 && vert3) { edges.Add(tri0); edges.Add(tri1); }
 
-                        innerTris.Add(tris[i]);
-                        innerTris.Add(tris[i + 1]);
-                        innerTris.Add(tris[i + 2]);
+                        innerTris.Add(tri0);
+                        innerTris.Add(tri1);
+                        innerTris.Add(tri2);
                     }
                     else
                     {
-                        outerTris.Add(tris[i]);
-                        outerTris.Add(tris[i + 1]);
-                        outerTris.Add(tris[i + 2]);
+                        outerTris.Add(tri0);
+                        outerTris.Add(tri1);
+                        outerTris.Add(tri2);
                     }
                 }
 
-                smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
-                innerMesh.SetTriangles(innerTris, subMeshIndex);
+                if (innerTris.Count > 0)
+                {
+                    anyTrianglesSet = true;
+                    smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
+                    innerMesh.SetTriangles(innerTris, subMeshIndex);
+                }
+            }
+
+            if (!anyTrianglesSet)
+            {
+                Destroy(newSmr.gameObject);
+                return false;
             }
 
             GameObject capInner = new GameObject("Cap", typeof(SkinnedMeshRenderer));
@@ -282,7 +550,9 @@ namespace UMA.Dismemberment2
             {
                 DismemberedEvent.Invoke(splitRootObj.transform, targetBone);
             }
-            //Profiler.EndSample();
+            Profiler.EndSample();
+
+            return true;
         }
 
         private GameObject CreateBones(GameObject rootToClone, GameObject parent, Transform[] bonesToKeep, int boneCount, Transform targetBoneName, out Transform[] newBones, out Transform targetBone)
@@ -395,6 +665,7 @@ namespace UMA.Dismemberment2
             return m;
         }
 
+        /*
         static Quaternion CapOrientation(Vector3[] verts, List<int> edges)
         {
             // rough guess as to the orientation of the vertices
@@ -405,6 +676,7 @@ namespace UMA.Dismemberment2
             Vector3 v3 = verts[edges[twothird]];
             return Quaternion.LookRotation(Vector3.Cross(v1 - v2, v3 - v2));
         }
+        */
 
         static Quaternion CapOrientation(List<Vector3> verts, List<int> edges)
         {
@@ -414,7 +686,9 @@ namespace UMA.Dismemberment2
             Vector3 v1 = verts[0];//verts[edges[0]];
             Vector3 v2 = verts[third];//verts[edges[third]];
             Vector3 v3 = verts[twothird];//verts[edges[twothird]];
-            return Quaternion.LookRotation(Vector3.Cross(v1 - v2, v3 - v2));
+
+            Vector3 look = Vector3.Cross(v1 - v2, v3 - v2);
+            return (look.sqrMagnitude <= 0.000001f) ? Quaternion.identity : Quaternion.LookRotation(look);
         }
 
         private bool ValidateHumanBone(HumanBodyBones humanBone, out Transform bone)
