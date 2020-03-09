@@ -251,7 +251,7 @@ namespace UMA.Dismemberment
                     Debug.LogError("Bone is null!");
                 return false;
             }
-            Profiler.BeginSample("Slice");
+            //Profiler.BeginSample("Slice");
             edges.Clear();
             weights.Clear();
             smr.sharedMesh.GetBoneWeights(weights);
@@ -388,7 +388,7 @@ namespace UMA.Dismemberment
             {
                 DismemberedEvent.Invoke(splitRootObj.transform, targetBone);
             }
-            Profiler.EndSample();
+            //Profiler.EndSample();
             return true;
         }
 
@@ -401,7 +401,7 @@ namespace UMA.Dismemberment
                     Debug.LogError("Bone is null!");
                 return false;
             }
-            Profiler.BeginSample("Slice");
+            //Profiler.BeginSample("Slice");
             edges.Clear();
 
             Transform[] smrBones = smr.bones;
@@ -550,7 +550,7 @@ namespace UMA.Dismemberment
             {
                 DismemberedEvent.Invoke(splitRootObj.transform, targetBone);
             }
-            Profiler.EndSample();
+            //Profiler.EndSample();
 
             return true;
         }
