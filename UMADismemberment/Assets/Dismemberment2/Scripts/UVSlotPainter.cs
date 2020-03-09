@@ -9,7 +9,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 #endif
 
-namespace UMA.Dismemberment2
+namespace UMA.Dismemberment
 {
 	[ExecuteInEditMode]
 	public class UVSlotPainter : MonoBehaviour

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-namespace UMA.Dismemberment2
+namespace UMA.Dismemberment
 {
     public class BitmaskKeyWindow : EditorWindow
     {

@@ -8,7 +8,7 @@ using UnityEditor;
 using UnityEngine.Profiling;
 #endif
 
-namespace UMA.Dismemberment2
+namespace UMA.Dismemberment
 {
     [CustomEditor(typeof(UVSlotPainter))]
     public class UVSlotPainterEditor : Editor

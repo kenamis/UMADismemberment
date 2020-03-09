@@ -15,7 +15,7 @@ using UnityEngine.Profiling;
 /// Many optimizations thanks to Ecurtz
 /// 
 
-namespace UMA.Dismemberment2
+namespace UMA.Dismemberment
 {
     [System.Serializable]
     public class Dismembered : UnityEvent<Transform, Transform>

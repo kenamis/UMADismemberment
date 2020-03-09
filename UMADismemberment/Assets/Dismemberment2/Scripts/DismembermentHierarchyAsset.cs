@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace UMA.Dismemberment2
+namespace UMA.Dismemberment
 {
 
     [CreateAssetMenu(fileName = "DismembermentHierarchy", menuName = "UMA/Dismemberment/Hierarchy Asset")]

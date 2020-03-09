@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditorInternal;
 
-namespace UMA.Dismemberment2
+namespace UMA.Dismemberment
 {
     [CustomEditor(typeof(DismembermentHierarchyAsset))]
     public class DismembermentHierarchyEditor : Editor

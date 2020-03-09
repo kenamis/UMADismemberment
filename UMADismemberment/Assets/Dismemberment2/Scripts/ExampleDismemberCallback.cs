@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-using UMA.Dismemberment2;
+using UMA.Dismemberment;
 
 public class ExampleDismemberCallback : MonoBehaviour
 {

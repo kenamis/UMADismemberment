@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UMA.CharacterSystem;
-using UMA.Dismemberment2;
+using UMA.Dismemberment;
 
 public class GUIDismemberment : MonoBehaviour
 {
