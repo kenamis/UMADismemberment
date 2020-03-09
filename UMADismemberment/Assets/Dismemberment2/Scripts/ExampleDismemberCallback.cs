@@ -12,11 +12,11 @@ public class ExampleDismemberCallback : MonoBehaviour
     public SkinnedMeshRenderer gibSource;
     public Material gibSourceMaterial;
 
-    UmaDismemberment2 dismemberment;
+    UmaDismemberment dismemberment;
 
     void Start()
     {
-        dismemberment = gameObject.GetComponent<UmaDismemberment2>();
+        dismemberment = gameObject.GetComponent<UmaDismemberment>();
         if (dismemberment != null)
             dismemberment.DismemberedEvent.AddListener(DismemberedCallback);
     }

@@ -10,8 +10,7 @@ public class GUIDismemberment : MonoBehaviour
     public GameObject avatar;
     public HumanBodyBones boneToSlice;
 
-    //UmaDismemberment dismember;
-    UmaDismemberment2 dismember;
+    UmaDismemberment dismember;
 
     Button button;
 
@@ -22,7 +21,7 @@ public class GUIDismemberment : MonoBehaviour
 
         if(avatar != null)
         {
-            dismember = avatar.GetComponent<UmaDismemberment2>();
+            dismember = avatar.GetComponent<UmaDismemberment>();
         }
     }
 
@@ -31,7 +30,7 @@ public class GUIDismemberment : MonoBehaviour
         if (dismember == null)
             Debug.LogError("UmaDismemberment not found!");
 
-        UmaDismemberment2.DismemberedInfo info;
+        UmaDismemberment.DismemberedInfo info;
         dismember.Slice(boneToSlice, out info);
 
         //example hook up copied from callback

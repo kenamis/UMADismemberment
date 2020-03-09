@@ -26,7 +26,7 @@ namespace UMA.Dismemberment2
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(DynamicCharacterAvatar))]
-    public class UmaDismemberment2 : MonoBehaviour
+    public class UmaDismemberment : MonoBehaviour
     {
         [System.Serializable]
         public struct DismemberedInfo
