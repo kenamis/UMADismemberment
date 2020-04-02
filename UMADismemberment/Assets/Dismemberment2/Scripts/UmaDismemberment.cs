@@ -220,6 +220,45 @@ namespace UMA.Dismemberment
         }
 
         /// <summary>
+        /// Slice by Human Bone. Has both legacy and new slice methods.
+        /// </summary>
+        /// <param name="humanBone">HumanBone to slice by.</param>
+        /// <param name="threshold">Threshold to use as the bone weighting to slice by. For Legacy</param>
+        /// <param name="bitMask">The bitmask to slice by.</param>
+        /// <param name="info">Out struct with the Dismembered Info.</param>
+        /// <param name="uvChannel">UV Channel data to use for the slice.</param>
+        /// <param name="useLegacy">Flag for whether to use legacy slice or new slice.</param>
+        /// <returns></returns>
+        public bool Slice(HumanBodyBones humanBone, float threshold, int bitMask, out DismemberedInfo info, int uvChannel = 2, bool useLegacy = true)
+        {
+            info = new DismemberedInfo();
+
+            Transform bone;
+            if (!ValidateHumanBone(humanBone, out bone))
+                return false;
+
+            int index = -1;
+            if (useSliceable)
+            {
+                index = ContainsBone(humanBone);
+                if (index == -1)
+                    return false;
+            }
+
+            if (hasSplit.Contains(bone))
+                return false;
+
+            if (useLegacy)
+            {
+                return SliceInternal_Legacy(bone, threshold, ref info);
+            }
+            else
+            {
+                return SliceInternal(bone, bitMask, ref info, uvChannel);
+            }
+        }
+
+        /// <summary>
         /// Slice by bone transform. Has both legacy and new slice methods.
         /// </summary>
         /// <param name="bone">Bone to slice by.</param>
@@ -325,9 +364,10 @@ namespace UMA.Dismemberment
                 if (innerTris.Count > 0)
                 {
                     anyTrianglesSet = true;
-                    smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
-                    innerMesh.SetTriangles(innerTris, subMeshIndex);
                 }
+
+                smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
+                innerMesh.SetTriangles(innerTris, subMeshIndex);
             }
 
             if(!anyTrianglesSet)
@@ -491,9 +531,10 @@ namespace UMA.Dismemberment
                 if (innerTris.Count > 0)
                 {
                     anyTrianglesSet = true;
-                    smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
-                    innerMesh.SetTriangles(innerTris, subMeshIndex);
                 }
+
+                smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
+                innerMesh.SetTriangles(innerTris, subMeshIndex);
             }
 
             if (!anyTrianglesSet)
