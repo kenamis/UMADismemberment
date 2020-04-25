@@ -87,6 +87,8 @@ namespace UMA.Dismemberment
         static List<Vector3> normalBuffer = new List<Vector3>(20);
         static List<BoneWeight> boneweightBuffer = new List<BoneWeight>(20);
         static List<BoneWeight> parentBoneweightBuffer = new List<BoneWeight>(10000);
+        List<Material> innerMaterials = new List<Material>(4);
+        List<Material> outerMaterials = new List<Material>(4);
 
         // Use this for initialization
         void Start()
@@ -326,6 +328,12 @@ namespace UMA.Dismemberment
             newSmr.sharedMaterials = smr.sharedMaterials;
 
             bool anyTrianglesSet = false;
+
+            innerMaterials.Clear();
+            outerMaterials.Clear();
+            newSmr.GetSharedMaterials(innerMaterials);
+            smr.GetSharedMaterials(outerMaterials);
+
             for (int subMeshIndex = 0; subMeshIndex < smr.sharedMesh.subMeshCount; subMeshIndex++)
             {
                 tris.Clear();
@@ -364,16 +372,36 @@ namespace UMA.Dismemberment
                 if (innerTris.Count > 0)
                 {
                     anyTrianglesSet = true;
+                    innerMesh.SetTriangles(innerTris, subMeshIndex);
+                }
+                else
+                {
+                    newSmr.sharedMesh.subMeshCount--;
+                    innerMaterials.Remove(newSmr.sharedMaterials[subMeshIndex]);
                 }
 
-                smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
-                innerMesh.SetTriangles(innerTris, subMeshIndex);
+                if(outerTris.Count > 0)
+                {
+                    smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
+                }
+                else
+                {
+                    smr.sharedMesh.subMeshCount--;
+                    outerMaterials.Remove(smr.sharedMaterials[subMeshIndex]);
+                }
             }
 
             if(!anyTrianglesSet)
             {
                 Destroy(newSmr.gameObject);
                 return false;
+            }
+            else
+            {
+                smr.sharedMaterials = outerMaterials.ToArray();
+                newSmr.sharedMaterials = innerMaterials.ToArray();
+                outerMaterials.Clear();
+                innerMaterials.Clear();
             }
 
             GameObject capInner = new GameObject("Cap", typeof(SkinnedMeshRenderer));
@@ -493,6 +521,12 @@ namespace UMA.Dismemberment
             newSmr.sharedMaterials = smr.sharedMaterials;
 
             bool anyTrianglesSet = false;
+            
+            innerMaterials.Clear();
+            outerMaterials.Clear();
+            newSmr.GetSharedMaterials(innerMaterials);
+            smr.GetSharedMaterials(outerMaterials);
+
             for (int subMeshIndex = 0; subMeshIndex < smr.sharedMesh.subMeshCount; subMeshIndex++)
             {
                 tris.Clear();
@@ -531,16 +565,36 @@ namespace UMA.Dismemberment
                 if (innerTris.Count > 0)
                 {
                     anyTrianglesSet = true;
+                    innerMesh.SetTriangles(innerTris, subMeshIndex);
+                }
+                else
+                {
+                    newSmr.sharedMesh.subMeshCount--;
+                    innerMaterials.Remove(newSmr.sharedMaterials[subMeshIndex]);
                 }
 
-                smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
-                innerMesh.SetTriangles(innerTris, subMeshIndex);
+                if (outerTris.Count > 0)
+                {
+                    smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
+                }
+                else
+                {
+                    smr.sharedMesh.subMeshCount--;
+                    outerMaterials.Remove(smr.sharedMaterials[subMeshIndex]);
+                }
             }
 
             if (!anyTrianglesSet)
             {
                 Destroy(newSmr.gameObject);
                 return false;
+            }
+            else
+            {
+                smr.sharedMaterials = outerMaterials.ToArray();
+                newSmr.sharedMaterials = innerMaterials.ToArray();
+                outerMaterials.Clear();
+                innerMaterials.Clear();
             }
 
             GameObject capInner = new GameObject("Cap", typeof(SkinnedMeshRenderer));
