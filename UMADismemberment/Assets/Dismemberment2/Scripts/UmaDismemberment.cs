@@ -334,6 +334,9 @@ namespace UMA.Dismemberment
             newSmr.GetSharedMaterials(innerMaterials);
             smr.GetSharedMaterials(outerMaterials);
 
+            int smrSubmeshCounter = 0;
+            int newSmrSubmeshCounter = 0;
+
             for (int subMeshIndex = 0; subMeshIndex < smr.sharedMesh.subMeshCount; subMeshIndex++)
             {
                 tris.Clear();
@@ -372,22 +375,22 @@ namespace UMA.Dismemberment
                 if (innerTris.Count > 0)
                 {
                     anyTrianglesSet = true;
-                    innerMesh.SetTriangles(innerTris, subMeshIndex);
+                    innerMesh.SetTriangles(innerTris, newSmrSubmeshCounter);
+                    newSmrSubmeshCounter++;
                 }
                 else
                 {
-                    newSmr.sharedMesh.subMeshCount--;
-                    innerMaterials.Remove(newSmr.sharedMaterials[subMeshIndex]);
+                    innerMaterials.Remove(newSmr.sharedMaterials[newSmrSubmeshCounter]);
                 }
 
                 if(outerTris.Count > 0)
                 {
-                    smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
+                    smr.sharedMesh.SetTriangles(outerTris, smrSubmeshCounter);
+                    smrSubmeshCounter++;
                 }
                 else
                 {
-                    smr.sharedMesh.subMeshCount--;
-                    outerMaterials.Remove(smr.sharedMaterials[subMeshIndex]);
+                    outerMaterials.Remove(smr.sharedMaterials[smrSubmeshCounter]);
                 }
             }
 
@@ -400,6 +403,10 @@ namespace UMA.Dismemberment
             {
                 smr.sharedMaterials = outerMaterials.ToArray();
                 newSmr.sharedMaterials = innerMaterials.ToArray();
+
+                newSmr.sharedMesh.subMeshCount = newSmr.sharedMaterials.Length;
+                smr.sharedMesh.subMeshCount = smr.sharedMaterials.Length;
+
                 outerMaterials.Clear();
                 innerMaterials.Clear();
             }
@@ -527,6 +534,9 @@ namespace UMA.Dismemberment
             newSmr.GetSharedMaterials(innerMaterials);
             smr.GetSharedMaterials(outerMaterials);
 
+            int smrSubmeshCounter = 0;
+            int newSmrSubmeshCounter = 0;
+
             for (int subMeshIndex = 0; subMeshIndex < smr.sharedMesh.subMeshCount; subMeshIndex++)
             {
                 tris.Clear();
@@ -565,22 +575,22 @@ namespace UMA.Dismemberment
                 if (innerTris.Count > 0)
                 {
                     anyTrianglesSet = true;
-                    innerMesh.SetTriangles(innerTris, subMeshIndex);
+                    innerMesh.SetTriangles(innerTris, newSmrSubmeshCounter);
+                    newSmrSubmeshCounter++;
                 }
                 else
                 {
-                    newSmr.sharedMesh.subMeshCount--;
-                    innerMaterials.Remove(newSmr.sharedMaterials[subMeshIndex]);
+                    innerMaterials.Remove(newSmr.sharedMaterials[newSmrSubmeshCounter]);
                 }
 
                 if (outerTris.Count > 0)
                 {
-                    smr.sharedMesh.SetTriangles(outerTris, subMeshIndex);
+                    smr.sharedMesh.SetTriangles(outerTris, smrSubmeshCounter);
+                    smrSubmeshCounter++;
                 }
                 else
                 {
-                    smr.sharedMesh.subMeshCount--;
-                    outerMaterials.Remove(smr.sharedMaterials[subMeshIndex]);
+                    outerMaterials.Remove(smr.sharedMaterials[smrSubmeshCounter]);
                 }
             }
 
@@ -593,6 +603,10 @@ namespace UMA.Dismemberment
             {
                 smr.sharedMaterials = outerMaterials.ToArray();
                 newSmr.sharedMaterials = innerMaterials.ToArray();
+
+                newSmr.sharedMesh.subMeshCount = newSmr.sharedMaterials.Length;
+                smr.sharedMesh.subMeshCount = smr.sharedMaterials.Length;
+
                 outerMaterials.Clear();
                 innerMaterials.Clear();
             }
