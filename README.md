@@ -1,4 +1,4 @@
-# UMADismemberment
+# UMADismemberment - Deprecated
 Examples Scene -> “Assets/Dismemberment/Scene/Example”
 
 The required component is “UMA Dismemberment”
